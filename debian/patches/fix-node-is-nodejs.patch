@@ -1,0 +1,16 @@
+--- a/bin/cake
++++ b/bin/cake
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env node
++#!/usr/bin/env nodejs
+ 
+ var path = require('path');
+ var fs = require('fs');
+--- a/bin/coffee
++++ b/bin/coffee
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env node
++#!/usr/bin/env nodejs
+ 
+ var path = require('path');
+ var fs = require('fs');
