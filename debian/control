@@ -1,5 +1,5 @@
 Source: coffeescript
-Section: Development
+Section: devel
 Priority: extra
 Maintainer: Geza Kovacs <gkovacs@mit.edu>
 Build-Depends: debhelper (>= 7)
