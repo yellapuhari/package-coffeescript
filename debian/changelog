@@ -1,3 +1,9 @@
+coffeescript (0.5.6-2) unstable; urgency=low
+
+  * Fix lintian errors
+
+ -- Geza Kovacs <gkovacs@mit.edu>  Thu, 25 Mar 2010 19:08:22 -0400
+
 coffeescript (0.5.6-1) unstable; urgency=low
 
   * Initial release (Closes: #575437)
