@@ -1,3 +1,9 @@
+coffeescript (0.5.6-5) unstable; urgency=low
+
+  * Install docs to /usr/share/doc
+
+ -- Geza Kovacs <gkovacs@mit.edu>  Thu, 25 Mar 2010 20:00:36 -0400
+
 coffeescript (0.5.6-4) unstable; urgency=low
 
   * Correct section to devel
