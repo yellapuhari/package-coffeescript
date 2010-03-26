@@ -1,3 +1,9 @@
+coffeescript (0.5.6-6gezakovacs~karmic1) karmic; urgency=low
+
+  * Upload to Launchpad
+
+ -- Geza Kovacs <gkovacs@mit.edu>  Fri, 26 Mar 2010 14:31:37 -0400
+
 coffeescript (0.5.6-6) unstable; urgency=low
 
   * Add quilt to Build-Depends
