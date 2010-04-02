@@ -1,5 +1,6 @@
 Description: Use /usr/bin/nodejs to supply Node.js
  Debian does not install Node.js to the same location as upstream
+Forwarded: not-needed
 Author: Geza Kovacs <gkovacs@mit.edu>
 --- a/bin/cake
 +++ b/bin/cake

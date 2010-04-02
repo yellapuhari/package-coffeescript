@@ -1,5 +1,6 @@
 Description: Load coffeescript libraries from /usr/lib/coffeescript
  Relative path loading prevents coffee from being installed to /usr/bin
+Forwarded: not-needed
 Author: Geza Kovacs <gkovacs@mit.edu>
 --- a/bin/cake
 +++ b/bin/cake
