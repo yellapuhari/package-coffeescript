@@ -2,8 +2,8 @@ Source: coffeescript
 Section: devel
 Priority: extra
 Maintainer: Geza Kovacs <gkovacs@mit.edu>
-Build-Depends: quilt, debhelper (>= 7)
-Standards-Version: 3.8.1
+Build-Depends: debhelper (>= 7)
+Standards-Version: 3.8.4
 Homepage: http://coffeescript.org
 
 Package: coffeescript
