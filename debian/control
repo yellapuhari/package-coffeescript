@@ -16,6 +16,7 @@ Description: interpreter and compiler for the CoffeeScript language
  however the produced JavaScript code is portable across web browsers.
 
 Package: coffeescript-doc
+Section: doc
 Architecture: all
 Depends: ${misc:Depends}
 Description: documentation for coffeescript
