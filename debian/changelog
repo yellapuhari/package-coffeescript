@@ -3,8 +3,9 @@ coffeescript (0.5.6-7) unstable; urgency=low
   * Remove unnecessary quilt Build-Depends
   * Remove --with-quilt from rules
   * Add descriptions to patches
+  * Register coffeescript-doc with doc-base
 
- -- Geza Kovacs <gkovacs@mit.edu>  Thu, 01 Apr 2010 20:48:09 -0400
+ -- Geza Kovacs <gkovacs@mit.edu>  Thu, 01 Apr 2010 20:59:03 -0400
 
 coffeescript (0.5.6-6) unstable; urgency=low
 
