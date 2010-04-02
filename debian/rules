@@ -6,3 +6,6 @@
 
 install:
 	dh install -pcoffee
+
+override_dh_fixperms:
+	chmod -x debian/coffeescript/usr/lib/coffeescript/*
