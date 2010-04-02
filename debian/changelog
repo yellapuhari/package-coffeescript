@@ -1,41 +1,19 @@
-coffeescript (0.5.6-7) unstable; urgency=low
+coffeescript (0.5.6-3) unstable; urgency=low
 
   * Remove unnecessary quilt Build-Depends.
   * Remove --with-quilt from rules.
   * Add descriptions to patches.
   * Register coffeescript-doc with doc-base.
-  * Change coffeescript category to doc.
+  * Change coffeescript-doc category to doc.
   * Change name entry for coffee manpage to be more descriptive.
 
- -- Geza Kovacs <gkovacs@mit.edu>  Thu, 01 Apr 2010 21:20:56 -0400
-
-coffeescript (0.5.6-6) unstable; urgency=low
-
-  * Add quilt to Build-Depends
-
- -- Geza Kovacs <gkovacs@mit.edu>  Fri, 26 Mar 2010 14:27:06 -0400
-
-coffeescript (0.5.6-5) unstable; urgency=low
-
-  * Install docs to /usr/share/doc
-
- -- Geza Kovacs <gkovacs@mit.edu>  Thu, 25 Mar 2010 20:00:36 -0400
-
-coffeescript (0.5.6-4) unstable; urgency=low
-
-  * Correct section to devel
-
- -- Geza Kovacs <gkovacs@mit.edu>  Thu, 25 Mar 2010 19:33:15 -0400
-
-coffeescript (0.5.6-3) unstable; urgency=low
-
-  * Correct section to Development
-
- -- Geza Kovacs <gkovacs@mit.edu>  Thu, 25 Mar 2010 19:19:31 -0400
+ -- Geza Kovacs <gkovacs@mit.edu>  Thu, 01 Apr 2010 22:34:50 -0400
 
 coffeescript (0.5.6-2) unstable; urgency=low
 
   * Fix lintian errors
+  * Change section to devel
+  * Install docs to /usr/share/doc
 
  -- Geza Kovacs <gkovacs@mit.edu>  Thu, 25 Mar 2010 19:08:22 -0400
 
