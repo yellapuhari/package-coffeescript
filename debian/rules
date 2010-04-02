@@ -2,7 +2,7 @@
 # -*- makefile -*-
 
 %:
-	dh --with quilt $@
+	dh $@
 
 install:
 	dh install -pcoffee
