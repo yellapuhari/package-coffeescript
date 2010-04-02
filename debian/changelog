@@ -1,12 +1,13 @@
 coffeescript (0.5.6-7) unstable; urgency=low
 
-  * Remove unnecessary quilt Build-Depends
-  * Remove --with-quilt from rules
-  * Add descriptions to patches
-  * Register coffeescript-doc with doc-base
-  * Change coffeescript category to doc
+  * Remove unnecessary quilt Build-Depends.
+  * Remove --with-quilt from rules.
+  * Add descriptions to patches.
+  * Register coffeescript-doc with doc-base.
+  * Change coffeescript category to doc.
+  * Change name entry for coffee manpage to be more descriptive.
 
- -- Geza Kovacs <gkovacs@mit.edu>  Thu, 01 Apr 2010 21:05:52 -0400
+ -- Geza Kovacs <gkovacs@mit.edu>  Thu, 01 Apr 2010 21:20:56 -0400
 
 coffeescript (0.5.6-6) unstable; urgency=low
 
