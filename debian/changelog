@@ -9,5 +9,6 @@ coffeescript (0.5.6-1) unstable; urgency=low
   * Add descriptions to patches
   * Register coffeescript-doc with doc-base
   * Change name entry for coffee manpage to be more descriptive
+  * Make js library files non-executable
 
- -- Geza Kovacs <gkovacs@mit.edu>  Thu, 01 Apr 2010 22:40:27 -0400
+ -- Geza Kovacs <gkovacs@mit.edu>  Fri, 02 Apr 2010 19:32:03 -0400
