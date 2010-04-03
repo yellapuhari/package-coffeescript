@@ -1,1 +1,2 @@
 fix-node-is-nodejs.patch
+install-to-lib-coffeescript.patch
