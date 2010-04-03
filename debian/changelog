@@ -3,9 +3,8 @@ coffeescript (0.5.6-2) unstable; urgency=low
   * Make js library files non-executable
   * Add note that patches are not meant to be forwarded upstream
   * Remove unused install section from rules
-  * Remove install-to-lib-coffeescript.patch, and use symlinks like upstream
 
- -- Geza Kovacs <gkovacs@mit.edu>  Sat, 03 Apr 2010 12:06:04 -0400
+ -- Geza Kovacs <gkovacs@mit.edu>  Sat, 03 Apr 2010 10:03:57 -0400
 
 coffeescript (0.5.6-1) unstable; urgency=low
 
