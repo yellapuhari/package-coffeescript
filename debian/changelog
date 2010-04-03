@@ -2,8 +2,9 @@ coffeescript (0.5.6-2) unstable; urgency=low
 
   * Make js library files non-executable
   * Add note that patches are not meant to be forwarded upstream
+  * Remove unused install section from rules
 
- -- Geza Kovacs <gkovacs@mit.edu>  Fri, 02 Apr 2010 19:40:21 -0400
+ -- Geza Kovacs <gkovacs@mit.edu>  Sat, 03 Apr 2010 10:03:57 -0400
 
 coffeescript (0.5.6-1) unstable; urgency=low
 
