@@ -22,7 +22,7 @@ else
   helpers:      this.helpers
 
 # The current CoffeeScript version number.
-exports.VERSION: '0.5.6'
+exports.VERSION: '0.6.1'
 
 # Instantiate a Lexer for our use here.
 lexer: new Lexer()
@@ -34,7 +34,7 @@ exports.compile: compile: (code, options) ->
   try
     (parser.parse lexer.tokenize code).compile options
   catch err
-    err.message: "In ${options.source}, ${err.message}" if options.source
+    err.message: "In $options.source, $err.message" if options.source
     throw err
 
 # Tokenize a string of CoffeeScript code, and return the array of tokens.
@@ -51,7 +51,7 @@ exports.nodes: (code) ->
 # setting `__filename`, `__dirname`, and relative `require()`.
 exports.run: ((code, options) ->
   module.filename: __filename: options.source
-  __dirname: path.dirname __filename
+  __dirname: path.dirname(__filename)
   eval exports.compile code, options
 )
 

@@ -48,8 +48,10 @@ ok "values: ${list.join ' '}" is 'values: 0 1 2 3 4 5 6 7 8 9'
 obj: {
   name: 'Joe'
   hi: -> "Hello $@name."
+  cya: -> "Hello $@name.".replace('Hello','Goodbye')
 }
 ok obj.hi() is "Hello Joe."
+ok obj.cya() is "Goodbye Joe."
 
 ok "With ${"quotes"}" is 'With quotes'
 ok 'With ${"quotes"}' is 'With ${"quotes"}'
@@ -66,3 +68,8 @@ a: 1
 b: 2
 c: 3
 ok "$a$b$c" is '123'
+
+result: null
+stash: (str) -> result: str
+stash "a ${ ('aa').replace /a/g, 'b' } c"
+ok result is 'a bb c'
