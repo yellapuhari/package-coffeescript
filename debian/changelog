@@ -1,3 +1,11 @@
+coffeescript (0.6.1-1) unstable; urgency=low
+
+  * New upstream release.
+    - Compatible with the Node.js 0.1.90 series.
+  * Updated nodejs dependency to 0.1.90
+
+ -- Geza Kovacs <gkovacs@mit.edu>  Fri, 14 May 2010 13:24:05 -0400
+
 coffeescript (0.5.6-3) unstable; urgency=low
 
   * Add copyright section for vendor/jison (Closes: #575437)
