@@ -53,24 +53,37 @@ grammar: {
   # The **Root** is the top-level node in the syntax tree. Since we parse bottom-up,
   # all parsing must end here.
   Root: [
-    o "",                                  -> new Expressions()
-    o "TERMINATOR",                        -> new Expressions()
-    o "Expressions"
+    o "",                                       -> new Expressions()
+    o "TERMINATOR",                             -> new Expressions()
+    o "Body"
     o "Block TERMINATOR"
   ]
 
-  # Any list of expressions or method body, seperated by line breaks or
-  # semicolons.
-  Expressions: [
-    o "Expression",                        -> Expressions.wrap [$1]
-    o "Expressions TERMINATOR Expression", -> $1.push $3
-    o "Expressions TERMINATOR"
+  # Any list of statements and expressions, seperated by line breaks or semicolons.
+  Body: [
+    o "Line",                                   -> Expressions.wrap [$1]
+    o "Body TERMINATOR Line",                   -> $1.push $3
+    o "Body TERMINATOR"
+  ]
+  
+  # Expressions and statements, which make up a line in a body.
+  Line: [
+    o "Expression"
+    o "Statement"
+  ]
+  
+  # Pure statements which cannot be expressions.
+  Statement: [
+    o "Return"
+    o "Throw"
+    o "BREAK",                                  -> new LiteralNode yytext
+    o "CONTINUE",                               -> new LiteralNode yytext
   ]
 
   # All the different types of expressions in our language. The basic unit of
-  # CoffeeScript is the **Expression** -- you'll notice that there is no
-  # "statement" nonterminal. Expressions serve as the building blocks
-  # of many other rules, making them somewhat circular.
+  # CoffeeScript is the **Expression** -- everything that can be an expression
+  # is one. Expressions serve as the building blocks of many other rules, making
+  # them somewhat circular.
   Expression: [
     o "Value"
     o "Call"
@@ -80,8 +93,6 @@ grammar: {
     o "Assign"
     o "If"
     o "Try"
-    o "Throw"
-    o "Return"
     o "While"
     o "For"
     o "Switch"
@@ -97,7 +108,7 @@ grammar: {
   # will convert some postfix forms into blocks for us, by adjusting the
   # token stream.
   Block: [
-    o "INDENT Expressions OUTDENT",             -> $2
+    o "INDENT Body OUTDENT",                    -> $2
     o "INDENT OUTDENT",                         -> new Expressions()
     o "TERMINATOR Comment",                     -> Expressions.wrap [$2]
   ]
@@ -120,8 +131,6 @@ grammar: {
     o "AlphaNumeric"
     o "JS",                                     -> new LiteralNode yytext
     o "REGEX",                                  -> new LiteralNode yytext
-    o "BREAK",                                  -> new LiteralNode yytext
-    o "CONTINUE",                               -> new LiteralNode yytext
     o "TRUE",                                   -> new LiteralNode true
     o "FALSE",                                  -> new LiteralNode false
     o "YES",                                    -> new LiteralNode true
@@ -132,7 +141,7 @@ grammar: {
 
   # Assignment of a variable, property, or index to a value.
   Assign: [
-    o "Value ASSIGN Expression",                -> new AssignNode $1, $3
+    o "Assignable ASSIGN Expression",           -> new AssignNode $1, $3
   ]
 
   # Assignment when it happens within an object literal. The difference from
@@ -195,18 +204,30 @@ grammar: {
     o "Expression . . .",                       -> new SplatNode $1
   ]
 
+  # Variables and properties that can be assigned to.
+  SimpleAssignable: [
+    o "Identifier",                             -> new ValueNode $1
+    o "Value Accessor",                         -> $1.push $2
+    o "Invocation Accessor",                    -> new ValueNode $1, [$2]
+    o "ThisProperty"
+  ]
+
+  # Everything that can be assigned to.
+  Assignable: [
+    o "SimpleAssignable"
+    o "Array",                                  -> new ValueNode $1
+    o "Object",                                 -> new ValueNode $1
+  ]
+
   # The types of things that can be treated as values -- assigned to, invoked
   # as functions, indexed into, named as a class, etc.
   Value: [
-    o "Identifier",                             -> new ValueNode $1
+    o "Assignable"
     o "Literal",                                -> new ValueNode $1
-    o "Array",                                  -> new ValueNode $1
-    o "Object",                                 -> new ValueNode $1
     o "Parenthetical",                          -> new ValueNode $1
     o "Range",                                  -> new ValueNode $1
     o "This"
-    o "Value Accessor",                         -> $1.push $2
-    o "Invocation Accessor",                    -> new ValueNode $1, [$2]
+    o "NULL",                                   -> new ValueNode new LiteralNode 'null'
   ]
 
   # The general group of accessors into an object, by property, by prototype
@@ -230,15 +251,8 @@ grammar: {
   Object: [
     o "{ AssignList }",                         -> new ObjectNode $2
     o "{ IndentedAssignList }",                 -> new ObjectNode $2
-  ]
-
-  # Class definitions have optional bodies of prototype property assignments,
-  # and optional references to the superclass.
-  Class: [
-    o "CLASS Value",                            -> new ClassNode $2
-    o "CLASS Value EXTENDS Value",              -> new ClassNode $2, $4
-    o "CLASS Value IndentedAssignList",         -> new ClassNode $2, null, $3
-    o "CLASS Value EXTENDS Value IndentedAssignList", -> new ClassNode $2, $4, $5
+    o "{ AssignList , }",                       -> new ObjectNode $2
+    o "{ IndentedAssignList , }",               -> new ObjectNode $2
   ]
 
   # Assignment of properties within an object literal can be separated by
@@ -254,6 +268,29 @@ grammar: {
   # An **AssignList** within a block indentation.
   IndentedAssignList: [
     o "INDENT AssignList OUTDENT",              -> $2
+    o "INDENT AssignList , OUTDENT",            -> $2
+  ]
+
+  # Class definitions have optional bodies of prototype property assignments,
+  # and optional references to the superclass.
+  Class: [
+    o "CLASS SimpleAssignable",                 -> new ClassNode $2
+    o "CLASS SimpleAssignable EXTENDS Value",   -> new ClassNode $2, $4
+    o "CLASS SimpleAssignable INDENT ClassBody OUTDENT", -> new ClassNode $2, null, $4
+    o "CLASS SimpleAssignable EXTENDS Value INDENT ClassBody OUTDENT", -> new ClassNode $2, $4, $6
+  ]
+
+  # Assignments that can happen directly inside a class declaration.
+  ClassAssign: [
+    o "AssignObj",                              -> $1
+    o "ThisProperty ASSIGN Expression",         -> new AssignNode new ValueNode($1), $3, 'this'
+  ]
+
+  # A list of assignments to a class.
+  ClassBody: [
+    o "",                                       -> []
+    o "ClassAssign",                            -> [$1]
+    o "ClassBody TERMINATOR ClassAssign",       -> $1.concat $3
   ]
 
   # The three flavors of function call: normal, object instantiation with `new`,
@@ -264,6 +301,7 @@ grammar: {
     o "Super"
   ]
 
+  # Binds a function call to a context and/or arguments.
   Curry: [
     o "Value <- Arguments",                     -> new CurryNode $1, $3
   ]
@@ -271,7 +309,7 @@ grammar: {
   # Extending an object by setting its prototype chain to reference a parent
   # object.
   Extends: [
-    o "Value EXTENDS Value",                    -> new ExtendsNode $1, $3
+    o "SimpleAssignable EXTENDS Value",         -> new ExtendsNode $1, $3
   ]
 
   # Ordinary function invocation, or a chained series of calls.
@@ -283,16 +321,23 @@ grammar: {
   # The list of arguments to a function call.
   Arguments: [
     o "CALL_START ArgList CALL_END",            -> $2
+    o "CALL_START ArgList , CALL_END",          -> $2
   ]
 
   # Calling super.
   Super: [
     o "SUPER CALL_START ArgList CALL_END",      -> new CallNode 'super', $3
+    o "SUPER CALL_START ArgList , CALL_END",    -> new CallNode 'super', $3
   ]
 
-  # A reference to the *this* current object, either naked or to a property.
+  # A reference to the *this* current object.
   This: [
+    o "THIS",                                   -> new ValueNode new LiteralNode 'this'
     o "@",                                      -> new ValueNode new LiteralNode 'this'
+  ]
+
+  # A reference to a property on *this*.
+  ThisProperty: [
     o "@ Identifier",                           -> new ValueNode new LiteralNode('this'), [new AccessorNode($2)]
   ]
 
@@ -311,6 +356,7 @@ grammar: {
   # The array literal.
   Array: [
     o "[ ArgList ]",                            -> new ArrayNode $2
+    o "[ ArgList , ]",                          -> new ArrayNode $2
   ]
 
   # The **ArgList** is both the list of objects passed into a function call,
@@ -325,6 +371,7 @@ grammar: {
     o "ArgList , TERMINATOR Expression",        -> $1.concat [$4]
     o "ArgList , INDENT Expression",            -> $1.concat [$4]
     o "ArgList OUTDENT"
+    o "ArgList , OUTDENT"
   ]
 
   # Just simple, comma-separated, required arguments (no fancy syntax). We need
@@ -358,7 +405,7 @@ grammar: {
   # where only values are accepted, wrapping it in parentheses will always do
   # the trick.
   Parenthetical: [
-    o "( Expression )",                         -> new ParentheticalNode $2
+    o "( Line )",                               -> new ParentheticalNode $2
   ]
 
   # A language extension to CoffeeScript from the outside. We simply pass
@@ -377,6 +424,7 @@ grammar: {
   # or postfix, with a single expression. There is no do..while.
   While: [
     o "WhileSource Block",                      -> $1.add_body $2
+    o "Statement WhileSource",                  -> $2.add_body Expressions.wrap [$1]
     o "Expression WhileSource",                 -> $2.add_body Expressions.wrap [$1]
   ]
 
@@ -384,6 +432,7 @@ grammar: {
   # Comprehensions can either be normal, with a block of expressions to execute,
   # or postfix, with a single expression.
   For: [
+    o "Statement FOR ForVariables ForSource",   -> new ForNode $1, $4, $3[0], $3[1]
     o "Expression FOR ForVariables ForSource",  -> new ForNode $1, $4, $3[0], $3[1]
     o "FOR ForVariables ForSource Block",       -> new ForNode $4, $3, $2[0], $2[1]
   ]
@@ -397,13 +446,16 @@ grammar: {
   ]
 
   # The source of a comprehension is an array or object with an optional filter
-  # clause. If it's an array comprehension, you can also choose to step throug
+  # clause. If it's an array comprehension, you can also choose to step through
   # in fixed-size increments.
   ForSource: [
-    o "IN Expression",                          -> {source:   $2}
-    o "OF Expression",                          -> {source:   $2, object: true}
-    o "ForSource WHEN Expression",              -> $1.filter: $3; $1
-    o "ForSource BY Expression",                -> $1.step:   $3; $1
+    o "IN Expression",                               -> {source: $2}
+    o "OF Expression",                               -> {source: $2, object: true}
+    o "IN Expression WHEN Expression",               -> {source: $2, filter: $4}
+    o "OF Expression WHEN Expression",               -> {source: $2, filter: $4, object: true}
+    o "IN Expression BY Expression",                 -> {source: $2, step:   $4}
+    o "IN Expression WHEN Expression BY Expression", -> {source: $2, filter: $4; step:   $6}
+    o "IN Expression BY Expression WHEN Expression", -> {source: $2, step:   $4, filter: $6}
   ]
 
   # The CoffeeScript switch/when/else block replaces the JavaScript
@@ -422,9 +474,9 @@ grammar: {
 
   # An individual **When** clause, with action.
   When: [
-    o "LEADING_WHEN SimpleArgs Block",          -> new IfNode $2, $3, null, {statement: true}
+    o "LEADING_WHEN SimpleArgs Block",            -> new IfNode $2, $3, null, {statement: true}
     o "LEADING_WHEN SimpleArgs Block TERMINATOR", -> new IfNode $2, $3, null, {statement: true}
-    o "Comment TERMINATOR When",                -> $3.comment: $1; $3
+    o "Comment TERMINATOR When",                  -> $3.comment: $1; $3
   ]
 
   # The most basic form of *if* is a condition and an action. The following
@@ -450,7 +502,9 @@ grammar: {
   # *if* and *unless*.
   If: [
     o "IfBlock"
+    o "Statement IF Expression",                -> new IfNode $3, Expressions.wrap([$1]), null, {statement: true}
     o "Expression IF Expression",               -> new IfNode $3, Expressions.wrap([$1]), null, {statement: true}
+    o "Statement UNLESS Expression",            -> new IfNode $3, Expressions.wrap([$1]), null, {statement: true, invert: true}
     o "Expression UNLESS Expression",           -> new IfNode $3, Expressions.wrap([$1]), null, {statement: true, invert: true}
   ]
 

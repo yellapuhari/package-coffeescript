@@ -10,6 +10,9 @@ this.exports: this unless process?
 
 exports.Scope: class Scope
 
+  # The top-level **Scope** object.
+  @root: null
+
   # Initialize a scope with its parent, for lookups up the chain,
   # as well as a reference to the **Expressions** node is belongs to, which is
   # where it should declare its variables, and a reference to the function that
@@ -17,7 +20,11 @@ exports.Scope: class Scope
   constructor: (parent, expressions, method) ->
     [@parent, @expressions, @method]: [parent, expressions, method]
     @variables: {}
-    @temp_var: if @parent then @parent.temp_var else '_a'
+    if @parent
+      @temp_var: @parent.temp_var
+    else
+      Scope.root: this
+      @temp_var: '_a'
 
   # Look up a variable name in lexical scope, and declare it if it does not
   # already exist.
@@ -25,6 +32,12 @@ exports.Scope: class Scope
     return true if @check name
     @variables[name]: 'var'
     false
+
+  # Test variables and return true the first time fn(v, k) returns true
+  any: (fn) ->
+    for v, k of @variables when fn(v, k)
+      return true
+    return false
 
   # Reserve a variable name as originating from a function parameter for this
   # scope. No `var` required for internal references.
@@ -47,19 +60,18 @@ exports.Scope: class Scope
 
   # Ensure that an assignment is made at the top of this scope
   # (or at the top-level scope, if requested).
-  assign: (name, value, top_level) ->
-    return @parent.assign(name, value, top_level) if top_level and @parent
+  assign: (name, value) ->
     @variables[name]: {value: value, assigned: true}
 
   # Does this scope reference any variables that need to be declared in the
   # given function body?
   has_declarations: (body) ->
-    body is @expressions and @declared_variables().length
+    body is @expressions and @any (k, val) -> val is 'var'
 
   # Does this scope reference any assignments that need to be declared at the
   # top of the given function body?
   has_assignments: (body) ->
-    body is @expressions and @assigned_variables().length
+    body is @expressions and @any (k, val) -> val.assigned
 
   # Return the list of variables first declared in this scope.
   declared_variables: ->
@@ -68,7 +80,7 @@ exports.Scope: class Scope
   # Return the list of assignments that are supposed to be made at the top
   # of this scope.
   assigned_variables: ->
-    "$key = ${val.value}" for key, val of @variables when val.assigned
+    "$key = $val.value" for key, val of @variables when val.assigned
 
   # Compile the JavaScript for all of the variable declarations in this scope.
   compiled_declarations: ->

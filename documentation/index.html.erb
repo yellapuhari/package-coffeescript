@@ -63,6 +63,7 @@
         <a href="#cake">Cake, and Cakefiles</a>
         <a href="#scripts">"text/coffeescript" Script Tags</a>
         <a href="#resources">Resources</a>
+        <a href="#webchat">Web Chat (IRC)</a>
         <a href="#change_log">Change Log</a>
       </div>
     </div>
@@ -129,7 +130,7 @@ alert reverse '.eeffoC yrT'</textarea></div>
 
     <p>
       <b>Latest Version:</b>
-      <a href="http://github.com/jashkenas/coffee-script/tarball/0.5.6">0.5.6</a>
+      <a href="http://github.com/jashkenas/coffee-script/tarball/0.6.1">0.6.1</a>
     </p>
 
     <h2>
@@ -170,12 +171,12 @@ alert reverse '.eeffoC yrT'</textarea></div>
     </p>
 
     <p>
-      To install, first make sure you have a working version of
-      <a href="http://nodejs.org/">Node.js</a> version 0.1.33 or higher.
+      To install, first make sure you have a working copy of the latest tagged version of
+      <a href="http://nodejs.org/">Node.js</a>, currently <b>0.1.90</b> or higher.
       Then clone the CoffeeScript
       <a href="http://github.com/jashkenas/coffee-script">source repository</a>
       from GitHub, or download the latest
-      release: <a href="http://github.com/jashkenas/coffee-script/tarball/0.5.6">0.5.6</a>.
+      release: <a href="http://github.com/jashkenas/coffee-script/tarball/0.6.1">0.6.1</a>.
       To install the CoffeeScript compiler system-wide
       under <tt>/usr/local</tt>, open the directory and run:
     </p>
@@ -432,7 +433,7 @@ coffee --print app/scripts/*.coffee > concatenation.js</pre>
     <%= code_for('conditionals') %>
     <p>
       You can assign a variable to a half-expression to perform an operation
-      like Ruby's <tt>||=</tt>, which only assigns a value to a variable 
+      like Ruby's <tt>||=</tt>, which only assigns a value to a variable
       if the variable's current value is falsy.
     </p>
 
@@ -638,6 +639,10 @@ coffee --print app/scripts/*.coffee > concatenation.js</pre>
       is converted into a call against the immediate ancestor's method of the same name.
     </p>
     <%= code_for('prototypes', '"one_two".dasherize()') %>
+    <p>
+      Finally, you may assign Class-level (static) properties within a class
+      definition by using<br /><tt>@property: value</tt>
+    </p>
 
     <p>
       <span id="pattern_matching" class="bookmark"></span>
@@ -838,7 +843,7 @@ coffee --print app/scripts/*.coffee > concatenation.js</pre>
         <tt>bin/cake build</tt> to rebuild the CoffeeScript compiler, and <br />
         <tt>bin/cake build:parser</tt> to regenerate the Jison parser if you're
         working on the grammar. <br /><br />
-        <tt>bin/cake build:full</tt> is a good command to run when you're working
+        <tt>git checkout lib &amp;&amp; bin/cake build:full</tt> is a good command to run when you're working
         on the core language. It'll refresh the lib directory
         (in case you broke something), build your altered compiler, use that to
         rebuild itself (a good sanity test) and then run all of the tests. If
@@ -856,20 +861,66 @@ coffee --print app/scripts/*.coffee > concatenation.js</pre>
       <li>
         <b>defunkt</b>'s <a href="http://github.com/defunkt/coffee-mode">CoffeeScript Major Mode</a>
         &mdash; a Emacs major mode that provides syntax highlighting, indentation
-        support, and some bonus commands. (For Vim and TextMate highlighters,
-        see the <tt>extras</tt> directory of the main repository.)
+        support, and some bonus commands.
+      </li>
+      <li>
+        <b>jashkenas</b>'s <a href="http://github.com/jashkenas/coffee-script-tmbundle">CoffeeScript TextMate Bundle</a>
+        &mdash; which provides syntax highlighting, snippet expansion, and the
+        ability to run bits of CoffeeScript from within TextMate itself.
+      </li>
+      <li>
+        <b>kchmck</b>'s <a href="http://github.com/kchmck/vim-coffee-script">Vim CoffeeScript</a>
+        &mdash; which adds Vim syntax highlighting and indentation support.
       </li>
       <li>
         <b>mattly</b>'s <a href="http://github.com/mattly/rack-coffee">rack-coffee</a>
         &mdash; a small Rack middleware for serving CoffeeScript files as
         compiled JavaScript on the fly.
       </li>
+      <li>
+        <b>jnicklas</b>'s <a href="http://github.com/jnicklas/bistro_car">BistroCar</a>
+        &mdash; a plugin that serves and bundles CoffeeScript from within your
+        Rails application.
+      </li>
+      <li>
+        <b>inem</b> and <b>gerad</b>'s <a href="http://github.com/gerad/coffee-haml-filter">coffee-haml-filter</a>
+        &mdash; a custom filter for rendering CoffeeScript inline within
+        <a href="http://haml-lang.com/">HAML</a> templates.
+      </li>
     </ul>
+
+    <h2>
+      <span id="webchat" class="bookmark"></span>
+      Web Chat (IRC)
+    </h2>
+
+    <p>
+      Quick help and advice can usually be found in the CoffeeScript IRC room.
+      Join <tt>#coffeescript</tt> on <tt>irc.freenode.net</tt>, or click the
+      button below to open a webchat session on this page.
+    </p>
+
+    <p>
+      <button id="open_webchat">click to open #coffeescript</button>
+    </p>
 
     <h2>
       <span id="change_log" class="bookmark"></span>
       Change Log
     </h2>
+    
+    <p>
+      <b class="header" style="margin-top: 20px;">0.6.1</b>
+      Upgraded CoffeeScript for compatibility with the new Node.js <b>v0.1.90</b>
+      series.
+    </p>
+
+    <p>
+      <b class="header" style="margin-top: 20px;">0.6.0</b>
+      Trailing commas are now allowed, a-la Python. Static
+      properties may be assigned directly within class definitions,
+      using <tt>@property</tt> notation.
+    </p>
 
     <p>
       <b class="header" style="margin-top: 20px;">0.5.6</b>
@@ -1134,6 +1185,9 @@ coffee --print app/scripts/*.coffee > concatenation.js</pre>
 
     $('.navigation .minimize').click ->
       document.body.className: 'minimized'
+
+    $('#open_webchat').click ->
+      $(this).replaceWith $('<iframe src="http://webchat.freenode.net/?channels=coffeescript" width="625" height="400"></iframe>')
 
     compile_source()
 

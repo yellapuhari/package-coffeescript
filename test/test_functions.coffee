@@ -33,8 +33,6 @@ obj.unbound()
 obj.bound()
 
 
-# The named function should be cleared out before a call occurs:
-
 # Python decorator style wrapper that memoizes any function
 memoize: (fn) ->
   cache: {}
@@ -74,14 +72,12 @@ ok result is 10
 
 
 # More fun with optional parens.
-
 fn: (arg) -> arg
 
 ok fn(fn {prop: 101}).prop is 101
 
 
 # Multi-blocks with optional parens.
-
 result: fn( ->
   fn ->
     "Wrapped"
@@ -91,7 +87,6 @@ ok result()() is 'Wrapped'
 
 
 # And even with strange things like this:
-
 funcs:  [((x) -> x), ((x) -> x * x)]
 result: funcs[1] 5
 
@@ -103,7 +98,6 @@ ok result is 'lo'
 
 
 # And with multiple single-line functions on the same line.
-
 func: (x) -> (x) -> (x) -> x
 ok func(1)(2)(3) is 3
 
@@ -111,3 +105,36 @@ ok func(1)(2)(3) is 3
 # Ensure that functions with the same name don't clash with helper functions.
 del: -> 5
 ok del() is 5
+
+# Ensure that functions can have a trailing comma in their argument list
+mult: (x, mids..., y) ->
+  x: * n for n in mids
+  x: * y
+
+ok mult(1, 2,) is 2
+ok mult(1, 2, 3,) is 6
+ok mult(10,[1..6]...,) is 7200
+
+
+# Test for inline functions with parentheses and implicit calls.
+combine: (func, num) -> func() * num
+result:  combine (-> 1 + 2), 3
+
+ok result is 9
+
+
+# Test for calls/parens/multiline-chains.
+f: (x) -> x
+result: (f 1).toString()
+  .length
+
+ok result is 1
+
+
+# Test implicit calls in functions in parens:
+result: ((val) ->
+  [].push val
+  val
+)(10)
+
+ok result is 10
