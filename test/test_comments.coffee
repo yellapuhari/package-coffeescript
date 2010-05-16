@@ -4,6 +4,7 @@ func: ->
   false
   false   # comment
   false
+
 # comment
   true
 
@@ -53,3 +54,8 @@ test:
   'test'
 
 ok test is 'test test test'
+
+###
+  This is a here-comment.
+  Kind of like a heredoc.
+###

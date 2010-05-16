@@ -9,19 +9,15 @@
 
 # Set up the Lexer for both Node.js and the browser, depending on where we are.
 if process?
-  Rewriter: require('./rewriter').Rewriter
-  helpers:  require('./helpers').helpers
+  {Rewriter}: require('./rewriter')
+  {helpers}:  require('./helpers')
 else
   this.exports: this
   Rewriter:     this.Rewriter
   helpers:      this.helpers
 
 # Import the helpers we need.
-include:          helpers.include
-count:            helpers.count
-starts:           helpers.starts
-compact:          helpers.compact
-balanced_string:  helpers.balanced_string
+{include, count, starts, compact, balanced_string}: helpers
 
 # The Lexer Class
 # ---------------
@@ -100,7 +96,7 @@ exports.Lexer: class Lexer
     @identifier_error id      if include RESERVED, id
     tag: 'LEADING_WHEN'       if tag is 'WHEN' and include LINE_BREAK, @tag()
     @i: + id.length
-    if not accessed
+    unless accessed
       tag: id: CONVERSIONS[id]         if include COFFEE_ALIASES, id
       return @tag_half_assignment tag  if @prev() and @prev()[0] is 'ASSIGN' and include HALF_ASSIGNMENTS, tag
     @token tag, id
@@ -130,8 +126,25 @@ exports.Lexer: class Lexer
   heredoc_token: ->
     return false unless match: @chunk.match(HEREDOC)
     quote: match[1].substr 0, 1
-    doc: @sanitize_heredoc match[2] or match[4], quote
+    doc: @sanitize_heredoc match[2] or match[4], {quote}
     @interpolate_string "$quote$doc$quote"
+    @line: + count match[1], "\n"
+    @i: + match[1].length
+    true
+
+  # Matches and conumes comments. We pass through comments into JavaScript,
+  # so they're treated as real tokens, like any other part of the language.
+  comment_token: ->
+    return false unless match: @chunk.match(COMMENT)
+    if match[3]
+      comment: @sanitize_heredoc match[3], {herecomment: true}
+      @token 'HERECOMMENT', comment.split MULTILINER
+    else
+      lines: compact match[1].replace(COMMENT_CLEANER, '').split MULTILINER
+      i: @tokens.length - 1
+      if @unfinished()
+        i: - 1 while @tokens[i] and not include LINE_BREAK, @tokens[i][0]
+      @tokens.splice(i + 1, 0, ['COMMENT', lines, @line], ['TERMINATOR', '\n', @line])
     @line: + count match[1], "\n"
     @i: + match[1].length
     true
@@ -152,7 +165,8 @@ exports.Lexer: class Lexer
     return false unless @chunk.match REGEX_START
     return false if     include NOT_REGEX, @tag()
     return false unless regex: @balanced_token ['/', '/']
-    regex: + (flags: @chunk.substr(regex.length).match REGEX_FLAGS)
+    return false unless end: @chunk.substr(regex.length).match REGEX_END
+    regex: + flags: end[2] if end[2]
     if regex.match REGEX_INTERPOLATION
       str: regex.substring(1).split('/')[0]
       str: str.replace REGEX_ESCAPE, (escaped) -> '\\' + escaped
@@ -169,19 +183,6 @@ exports.Lexer: class Lexer
   balanced_token: (delimited...) ->
     balanced_string @chunk, delimited
 
-  # Matches and conumes comments. We pass through comments into JavaScript,
-  # so they're treated as real tokens, like any other part of the language.
-  comment_token: ->
-    return false unless comment: @match COMMENT, 1
-    @line: + (comment.match(MULTILINER) or []).length
-    lines: compact comment.replace(COMMENT_CLEANER, '').split MULTILINER
-    i: @tokens.length - 1
-    if @unfinished()
-      i: - 1 while @tokens[i] and not include LINE_BREAK, @tokens[i][0]
-    @tokens.splice(i + 1, 0, ['COMMENT', lines, @line], ['TERMINATOR', '\n', @line])
-    @i: + comment.length
-    true
-
   # Matches newlines, indents, and outdents, and determines which is which.
   # If we can detect that the current line is continued onto the the next line,
   # then the newline is suppressed:
@@ -194,7 +195,7 @@ exports.Lexer: class Lexer
   # can close multiple indents, so we need to know how far in we happen to be.
   line_token: ->
     return false unless indent: @match MULTI_DENT, 1
-    @line: + indent.match(MULTILINER).length
+    @line: + count indent, "\n"
     @i   : + indent.length
     prev: @prev(2)
     size: indent.match(LAST_DENTS).reverse()[0].match(LAST_DENT)[1].length
@@ -290,13 +291,16 @@ exports.Lexer: class Lexer
       else
         @tag 1, 'PROPERTY_ACCESS'
 
-  # Sanitize a heredoc by escaping internal double quotes and erasing all
-  # external indentation on the left-hand side.
-  sanitize_heredoc: (doc, quote) ->
-    indent: (doc.match(HEREDOC_INDENT) or ['']).sort()[0]
-    doc.replace(new RegExp("^" +indent, 'gm'), '')
-       .replace(MULTILINER, "\\n")
-       .replace(new RegExp(quote, 'g'), '\\"')
+  # Sanitize a heredoc or herecomment by escaping internal double quotes and
+  # erasing all external indentation on the left-hand side.
+  sanitize_heredoc: (doc, options) ->
+    while match: HEREDOC_INDENT.exec doc
+      attempt: if match[2]? then match[2] else match[3]
+      indent: attempt if not indent or attempt.length < indent.length
+    doc: doc.replace(new RegExp("^" +indent, 'gm'), '')
+    return doc if options.herecomment
+    doc.replace(MULTILINER, "\\n")
+       .replace(new RegExp(options.quote, 'g'), '\\"')
 
   # Tag a half assignment.
   tag_half_assignment: (tag) ->
@@ -315,9 +319,9 @@ exports.Lexer: class Lexer
       tok: @prev i
       return if not tok
       switch tok[0]
-        when 'IDENTIFIER' then tok[0]: 'PARAM'
-        when ')'          then tok[0]: 'PARAM_END'
-        when '('          then return tok[0]: 'PARAM_START'
+        when 'IDENTIFIER'       then tok[0]: 'PARAM'
+        when ')'                then tok[0]: 'PARAM_END'
+        when '(', 'CALL_START'  then return tok[0]: 'PARAM_START'
     true
 
   # Close up all remaining open blocks at the end of the file.
@@ -453,7 +457,7 @@ JS_KEYWORDS: [
 # be used standalone, but you can reference them as an attached property.
 COFFEE_ALIASES:  ["and", "or", "is", "isnt", "not"]
 COFFEE_KEYWORDS: COFFEE_ALIASES.concat [
-  "then", "unless",
+  "then", "unless", "until",
   "yes", "no", "on", "off",
   "of", "by", "where", "when"
 ]
@@ -467,7 +471,7 @@ KEYWORDS: JS_KEYWORDS.concat COFFEE_KEYWORDS
 # to avoid having a JavaScript error at runtime.
 RESERVED: [
   "case", "default", "do", "function", "var", "void", "with"
-  "const", "let", "debugger", "enum", "export", "import", "native"
+  "const", "let", "enum", "export", "import", "native"
 ]
 
 # The superset of both JavaScript keywords and reserved words, none of which may
@@ -481,7 +485,7 @@ HEREDOC       : /^("{6}|'{6}|"{3}\n?([\s\S]*?)\n?([ \t]*)"{3}|'{3}\n?([\s\S]*?)\
 INTERPOLATION : /^\$([a-zA-Z_@]\w*(\.\w+)*)/
 OPERATOR      : /^([+\*&|\/\-%=<>:!?]+)([ \t]*)/
 WHITESPACE    : /^([ \t]+)/
-COMMENT       : /^(((\n?[ \t]*)?#[^\n]*)+)/
+COMMENT       : /^((\n?[ \t]*)?#{3}(?!#)\n*([\s\S]*?)\n*([ \t]*)#{3}|((\n?[ \t]*)?#[^\n]*)+)/
 CODE          : /^((-|=)>)/
 MULTI_DENT    : /^((\n([ \t]*))+)(\.)?/
 LAST_DENTS    : /\n([ \t]*)/g
@@ -491,7 +495,7 @@ ASSIGNMENT    : /^(:|=)$/
 # Regex-matching-regexes.
 REGEX_START        : /^\/[^\/ ]/
 REGEX_INTERPOLATION: /([^\\]\$[a-zA-Z_@]|[^\\]\$\{.*[^\\]\})/
-REGEX_FLAGS        : /^[imgy]{0,4}/
+REGEX_END          : /^(([imgy]{1,4})\b|\W)/
 REGEX_ESCAPE       : /\\[^\$]/g
 
 # Token cleaning regexes.
@@ -500,7 +504,7 @@ MULTILINER      : /\n/g
 STRING_NEWLINES : /\n[ \t]*/g
 COMMENT_CLEANER : /(^[ \t]*#|\n[ \t]*$)/mg
 NO_NEWLINE      : /^([+\*&|\/\-%=<>:!.\\][<>=&|]*|and|or|is|isnt|not|delete|typeof|instanceof)$/
-HEREDOC_INDENT  : /^[ \t]+/mg
+HEREDOC_INDENT  : /(\n+([ \t]*)|^([ \t]+))/g
 
 # Tokens which a regular expression will never immediately follow, but which
 # a division operator might.
@@ -509,7 +513,7 @@ HEREDOC_INDENT  : /^[ \t]+/mg
 #
 # Our list is shorter, due to sans-parentheses method calls.
 NOT_REGEX: [
-  'NUMBER', 'REGEX', '++', '--', 'FALSE', 'NULL', 'TRUE'
+  'NUMBER', 'REGEX', '++', '--', 'FALSE', 'NULL', 'TRUE', ']'
 ]
 
 # Tokens which could legitimately be invoked or indexed. A opening

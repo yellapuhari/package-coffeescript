@@ -48,7 +48,7 @@ exports.run: ->
   path.exists 'Cakefile', (exists) ->
     throw new Error("Cakefile not found in ${process.cwd()}") unless exists
     args: process.argv[2...process.argv.length]
-    CoffeeScript.run fs.readFileSync('Cakefile'), {source: 'Cakefile'}
+    CoffeeScript.run fs.readFileSync('Cakefile').toString(), {source: 'Cakefile'}
     oparse: new optparse.OptionParser switches
     return print_tasks() unless args.length
     options: oparse.parse(args)
@@ -66,5 +66,5 @@ print_tasks: ->
 
 # Print an error and exit when attempting to all an undefined task.
 no_such_task: (task) ->
-  puts "No such task: \"$task\"\n"
+  puts "No such task: \"$task\""
   process.exit 1

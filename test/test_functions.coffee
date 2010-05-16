@@ -6,7 +6,6 @@ ok x is 1
 ok typeof(y.x) is 'function'
 ok y.x instanceof Function
 ok y.x() is 3
-ok y.x.name is 'x'
 
 
 # The empty function should not cause a syntax error.
@@ -76,6 +75,11 @@ fn: (arg) -> arg
 
 ok fn(fn {prop: 101}).prop is 101
 
+# Function calls sans-spacing.
+ok((fn (x) ->
+  3
+)() is 3)
+
 
 # Multi-blocks with optional parens.
 result: fn( ->
@@ -138,3 +142,16 @@ result: ((val) ->
 )(10)
 
 ok result is 10
+
+
+# More paren compilation tests:
+reverse: (obj) -> obj.reverse()
+ok reverse([1, 2].concat 3).join(' ') is '3 2 1'
+
+# Passing multiple functions without paren-wrapping is legal, and should compile.
+sum: (one, two) -> one() + two()
+result: sum ->
+  7 + 9
+, ->
+  1 + 3
+ok result is 20

@@ -7,13 +7,13 @@
 
 # Set up exported variables for both Node.js and the browser.
 if process?
-  helpers: require('./helpers').helpers
+  {helpers}: require('./helpers')
 else
   this.exports: this
   helpers:      this.helpers
 
 # Import the helpers we need.
-include: helpers.include
+{include}: helpers
 
 # The **Rewriter** class is used by the [Lexer](lexer.html), directly against
 # its internal array of tokens.
@@ -54,10 +54,13 @@ exports.Rewriter: class Rewriter
   adjust_comments: ->
     @scan_tokens (prev, token, post, i) =>
       return 1 unless token[0] is 'COMMENT'
-      after:  @tokens[i + 2]
+      [before, after]: [@tokens[i - 2], @tokens[i + 2]]
       if after and after[0] is 'INDENT'
         @tokens.splice i + 2, 1
-        @tokens.splice i, 0, after
+        if before and before[0] is 'OUTDENT' and post and prev[0] is post[0] is 'TERMINATOR'
+          @tokens.splice i - 2, 1
+        else
+          @tokens.splice i, 0, after
         return 1
       else if prev and prev[0] isnt 'TERMINATOR' and prev[0] isnt 'INDENT' and prev[0] isnt 'OUTDENT'
         @tokens.splice i, 0, ['TERMINATOR', "\n", prev[2]]
@@ -109,38 +112,40 @@ exports.Rewriter: class Rewriter
   # deal with them.
   add_implicit_parentheses: ->
     stack: [0]
-    calls:  0
-    parens: 0
-    start_parens: 0
+    close_calls: (i) =>
+      for tmp in [0...stack[stack.length - 1]]
+        @tokens.splice(i, 0, ['CALL_END', ')', @tokens[i][2]])
+      size: stack[stack.length - 1] + 1
+      stack[stack.length - 1]: 0
+      size
     @scan_tokens (prev, token, post, i) =>
       tag: token[0]
-      switch tag
-        when 'CALL_START' then calls: + 1
-        when 'CALL_END'   then calls: - 1
-        when '('          then parens: + 1
-        when ')'          then parens: - 1
-        when 'INDENT'     then stack.push 0
-        when 'OUTDENT'
-          last: stack.pop()
-          stack[stack.length - 1]: + last
+      stack[stack.length - 2]: + stack.pop() if tag is 'OUTDENT'
       open: stack[stack.length - 1] > 0
-      if !post? or (start_parens > parens) or (start_parens is parens and include IMPLICIT_END, tag)
-        return 1 if tag is 'INDENT' and prev and include IMPLICIT_BLOCK, prev[0]
-        return 1 if tag is 'OUTDENT' and token.generated
-        if open or tag is 'INDENT'
-          idx: if tag is 'OUTDENT' then i + 1 else i
-          stack_pointer: if tag is 'INDENT' then 2 else 1
-          for tmp in [0...stack[stack.length - stack_pointer]]
-            @tokens.splice(idx, 0, ['CALL_END', ')', token[2]])
-          size: stack[stack.length - stack_pointer] + 1
-          stack[stack.length - stack_pointer]: 0
+      if prev and prev.spaced and include(IMPLICIT_FUNC, prev[0]) and include(IMPLICIT_CALL, tag)
+        @tokens.splice i, 0, ['CALL_START', '(', token[2]]
+        stack[stack.length - 1]: + 1
+        stack.push 0 if include(EXPRESSION_START, tag)
+        return 2
+      if include(EXPRESSION_START, tag)
+        if tag is 'INDENT' and !token.generated and open and not (prev and include(IMPLICIT_BLOCK, prev[0]))
+          size: close_calls(i)
+          stack.push 0
           return size
-      return 1 unless prev and include(IMPLICIT_FUNC, prev[0]) and include(IMPLICIT_CALL, tag)
-      calls: 0
-      start_parens: if tag is '(' then parens - 1 else parens
-      @tokens.splice i, 0, ['CALL_START', '(', token[2]]
-      stack[stack.length - 1]: + 1
-      return 2
+        stack.push 0
+        return 1
+      if open and !token.generated and (!post or include(IMPLICIT_END, tag))
+        j: 1; j++ while (nx: @tokens[i + j])? and include(IMPLICIT_END, nx[0])
+        if nx? and nx[0] is ','
+          @tokens.splice(i, 1) if tag is 'TERMINATOR'
+        else
+          size: close_calls(i)
+          stack.pop() if tag isnt 'OUTDENT' and include EXPRESSION_END, tag
+          return size
+      if tag isnt 'OUTDENT' and include EXPRESSION_END, tag
+        stack[stack.length - 2]: + stack.pop()
+        return 1
+      return 1
 
   # Because our grammar is LALR(1), it can't handle some single-line
   # expressions that lack ending delimiters. The **Rewriter** adds the implicit
@@ -152,7 +157,9 @@ exports.Rewriter: class Rewriter
         post[0] isnt 'INDENT' and
         not (token[0] is 'ELSE' and post[0] is 'IF')
       starter: token[0]
-      @tokens.splice i + 1, 0, ['INDENT', 2, token[2]]
+      indent: ['INDENT', 2, token[2]]
+      indent.generated: true
+      @tokens.splice i + 1, 0, indent
       idx: i + 1
       parens: 0
       while true
@@ -209,7 +216,8 @@ exports.Rewriter: class Rewriter
   #    it with the inverse of what we've just popped.
   # 3. Keep track of "debt" for tokens that we manufacture, to make sure we end
   #    up balanced in the end.
-  #
+  # 4. Be careful not to alter array or parentheses delimiters with overzealous
+  #    rewriting.
   rewrite_closing_parens: ->
     stack: []
     debt:  {}
@@ -228,10 +236,15 @@ exports.Rewriter: class Rewriter
         else
           match: stack.pop()
           mtag:  match[0]
-          return 1 if tag is INVERSES[mtag]
+          oppos: INVERSES[mtag]
+          return 1 if tag is oppos
           debt[mtag]: + 1
-          val: if mtag is 'INDENT' then match[1] else INVERSES[mtag]
-          @tokens.splice i, 0, [INVERSES[mtag], val]
+          val: [oppos, if mtag is 'INDENT' then match[1] else oppos]
+          if @tokens[i + 2]?[0] is mtag
+            @tokens.splice i + 3, 0, val
+            stack.push(match)
+          else
+            @tokens.splice i, 0, val
           return 1
       else
         return 1
@@ -261,7 +274,7 @@ EXPRESSION_END:   pair[1] for pair in BALANCED_PAIRS
 EXPRESSION_CLOSE: ['CATCH', 'WHEN', 'ELSE', 'FINALLY'].concat EXPRESSION_END
 
 # Tokens that, if followed by an `IMPLICIT_CALL`, indicate a function invocation.
-IMPLICIT_FUNC:  ['IDENTIFIER', 'SUPER', ')', 'CALL_END', ']', 'INDEX_END', '<-']
+IMPLICIT_FUNC:  ['IDENTIFIER', 'SUPER', ')', 'CALL_END', ']', 'INDEX_END', '<-', '@']
 
 # If preceded by an `IMPLICIT_FUNC`, indicates a function invocation.
 IMPLICIT_CALL:  ['IDENTIFIER', 'NUMBER', 'STRING', 'JS', 'REGEX', 'NEW', 'PARAM_START',
@@ -274,7 +287,7 @@ IMPLICIT_CALL:  ['IDENTIFIER', 'NUMBER', 'STRING', 'JS', 'REGEX', 'NEW', 'PARAM_
 IMPLICIT_BLOCK: ['->', '=>', '{', '[', ',']
 
 # Tokens that always mark the end of an implicit call for single-liners.
-IMPLICIT_END:   ['IF', 'UNLESS', 'FOR', 'WHILE', 'TERMINATOR', 'INDENT', 'OUTDENT']
+IMPLICIT_END:   ['IF', 'UNLESS', 'FOR', 'WHILE', 'UNTIL', 'TERMINATOR', 'INDENT'].concat EXPRESSION_END
 
 # Single-line flavors of block expressions that have unclosed endings.
 # The grammar can't disambiguate them, so we insert the implicit indentation.
