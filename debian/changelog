@@ -1,6 +1,12 @@
 coffeescript (0.6.2-1) unstable; urgency=low
 
   * New upstream release
+    - Syntax for block comments
+    - DRY-style pattern matching supported
+    - Pattern matching allowed within comprehension variables
+    - unless statement allowed in block form
+    - until loops added
+    - switch statements allowed without switch object clauses
   * Added Vcs-Git and Vcs-Browser fields
   * Updated nodejs dependency to 0.1.95
 
