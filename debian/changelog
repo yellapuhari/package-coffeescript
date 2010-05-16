@@ -1,3 +1,11 @@
+coffeescript (0.6.2-1) unstable; urgency=low
+
+  * New upstream release
+  * Added Vcs-Git and Vcs-Browser fields
+  * Updated nodejs dependency to 0.1.95
+
+ -- Geza Kovacs <gkovacs@mit.edu>  Sun, 16 May 2010 12:31:23 -0400
+
 coffeescript (0.6.1-1) unstable; urgency=low
 
   * New upstream release.

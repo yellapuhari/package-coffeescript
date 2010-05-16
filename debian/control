@@ -10,7 +10,7 @@ Homepage: http://coffeescript.org
 
 Package: coffeescript
 Architecture: all
-Depends: ${shlibs:Depends}, ${misc:Depends}, nodejs (>= 0.1.90)
+Depends: ${shlibs:Depends}, ${misc:Depends}, nodejs (>= 0.1.95)
 Description: interpreter and compiler for the CoffeeScript language
  CoffeeScript is a language which compiles to JavaScript
  .
