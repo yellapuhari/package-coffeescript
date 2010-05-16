@@ -56,7 +56,7 @@ ok c is 30
 person: {
   name: "Moe"
   family: {
-    brother: {
+    'elder-brother': {
       addresses: [
         "first"
         {
@@ -68,7 +68,7 @@ person: {
   }
 }
 
-{name: a, family: {brother: {addresses: [one, {city: b}]}}}: person
+{name: a, family: {'elder-brother': {addresses: [one, {city: b}]}}}: person
 
 ok a is "Moe"
 ok b is "Moquasset NY, 10021"
@@ -89,8 +89,51 @@ test: {
 ok addr.join(', ') is "Street 101, Apt 101, City 101"
 
 
-# Destructuring against an expression.
+# Pattern matching against an expression.
 [a, b]: if true then [2, 1] else [1, 2]
 
 ok a is 2
 ok b is 1
+
+
+# Pattern matching with object shorthand.
+
+person: {
+  name: "Bob"
+  age:  26
+  dogs: ["Prince", "Bowie"]
+}
+
+{name, age, dogs: [first, second]}: person
+
+ok name   is "Bob"
+ok age    is 26
+ok first  is "Prince"
+ok second is "Bowie"
+
+# Pattern matching within for..loops
+
+persons: {
+  George: { name: "Bob" },
+  Bob: { name: "Alice" }
+  Christopher: { name: "Stan" }
+}
+
+join1: "$key: $name" for key, { name } of persons
+
+deepEqual join1, ["George: Bob", "Bob: Alice", "Christopher: Stan"]
+
+persons: [
+  { name: "Bob", parent: { name: "George" } },
+  { name: "Alice", parent: { name: "Bob" } },
+  { name: "Stan", parent: { name: "Christopher" } }
+]
+
+join2: "$parent: $name" for { name, parent: { name: parent } } in persons
+
+deepEqual join1, join2
+
+persons: [['Bob', ['George']], ['Alice', ['Bob']], ['Stan', ['Christopher']]]
+join3: "$parent: $name" for [name, [parent]] in persons
+
+deepEqual join2, join3

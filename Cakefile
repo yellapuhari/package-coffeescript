@@ -1,13 +1,13 @@
-fs:           require 'fs'
-helpers:      require('./lib/helpers').helpers
-CoffeeScript: require './lib/coffee-script'
-{spawn: spawn, exec: exec}: require('child_process')
+fs:            require 'fs'
+{helpers}:     require('./lib/helpers')
+CoffeeScript:  require './lib/coffee-script'
+{spawn, exec}: require('child_process')
 
 # Run a CoffeeScript through our node/coffee interpreter.
 run: (args) ->
   proc: spawn 'bin/coffee', args
-  proc.addListener 'error', (err) -> if err then puts err
-
+  proc.stderr.addListener 'data', (buffer) -> puts buffer.toString()
+  proc.addListener 'exit', (status) -> process.exit(1) if status != 0
 
 option '-p', '--prefix [DIR]', 'set the installation prefix for `cake install`'
 
@@ -20,6 +20,8 @@ task 'install', 'install CoffeeScript into /usr/local (or --prefix)', (options) 
     "cp -rf bin lib LICENSE README package.json src vendor $lib"
     "ln -sf $lib/bin/coffee $base/bin/coffee"
     "ln -sf $lib/bin/cake $base/bin/cake"
+    "mkdir -p ~/.node_libraries"
+    "ln -sf $lib/lib ~/.node_libraries/coffee-script"
   ].join(' && '), (err, stdout, stderr) ->
    if err then print stderr
   )
@@ -93,7 +95,7 @@ task 'test', 'run the CoffeeScript language test suite', ->
       source: path.join 'test', file
       fs.readFile source, (err, code) ->
         try
-          CoffeeScript.run code, {source: source}
+          CoffeeScript.run code.toString(), {source: source}
         catch err
           failed_tests += 1
           puts "${red}failed:${reset} $source"

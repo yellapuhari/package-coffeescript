@@ -65,19 +65,19 @@ grammar: {
     o "Body TERMINATOR Line",                   -> $1.push $3
     o "Body TERMINATOR"
   ]
-  
+
   # Expressions and statements, which make up a line in a body.
   Line: [
     o "Expression"
     o "Statement"
   ]
-  
+
   # Pure statements which cannot be expressions.
   Statement: [
     o "Return"
     o "Throw"
-    o "BREAK",                                  -> new LiteralNode yytext
-    o "CONTINUE",                               -> new LiteralNode yytext
+    o "BREAK",                                  -> new LiteralNode $1
+    o "CONTINUE",                               -> new LiteralNode $1
   ]
 
   # All the different types of expressions in our language. The basic unit of
@@ -115,22 +115,22 @@ grammar: {
 
   # A literal identifier, a variable name or property.
   Identifier: [
-    o "IDENTIFIER",                             -> new LiteralNode yytext
+    o "IDENTIFIER",                             -> new LiteralNode $1
   ]
 
   # Alphanumerics are separated from the other **Literal** matchers because
   # they can also serve as keys in object literals.
   AlphaNumeric: [
-    o "NUMBER",                                 -> new LiteralNode yytext
-    o "STRING",                                 -> new LiteralNode yytext
+    o "NUMBER",                                 -> new LiteralNode $1
+    o "STRING",                                 -> new LiteralNode $1
   ]
 
   # All of our immediate values. These can (in general), be passed straight
   # through and printed to JavaScript.
   Literal: [
     o "AlphaNumeric"
-    o "JS",                                     -> new LiteralNode yytext
-    o "REGEX",                                  -> new LiteralNode yytext
+    o "JS",                                     -> new LiteralNode $1
+    o "REGEX",                                  -> new LiteralNode $1
     o "TRUE",                                   -> new LiteralNode true
     o "FALSE",                                  -> new LiteralNode false
     o "YES",                                    -> new LiteralNode true
@@ -147,6 +147,8 @@ grammar: {
   # Assignment when it happens within an object literal. The difference from
   # the ordinary **Assign** is that these allow numbers and strings as keys.
   AssignObj: [
+    o "Identifier",                             -> new ValueNode $1
+    o "AlphaNumeric"
     o "Identifier ASSIGN Expression",           -> new AssignNode new ValueNode($1), $3, 'object'
     o "AlphaNumeric ASSIGN Expression",         -> new AssignNode new ValueNode($1), $3, 'object'
     o "Comment"
@@ -162,7 +164,8 @@ grammar: {
   # have to parse comments like any other construct, and identify all of the
   # positions in which they can occur in the grammar.
   Comment: [
-    o "COMMENT",                                -> new CommentNode yytext
+    o "COMMENT",                                -> new CommentNode $1
+    o "HERECOMMENT",                            -> new CommentNode $1, 'herecomment'
   ]
 
   # [The existential operator](http://jashkenas.github.com/coffee-script/#existence).
@@ -185,6 +188,12 @@ grammar: {
     o "=>",                                     -> 'boundfunc'
   ]
 
+  # An optional, trailing comma.
+  OptComma: [
+    o ''
+    o ','
+  ]
+
   # The list of parameters that a function accepts can be of any length.
   ParamList: [
     o "",                                       -> []
@@ -195,7 +204,7 @@ grammar: {
   # A single parameter in a function definition can be ordinary, or a splat
   # that hoovers up the remaining arguments.
   Param: [
-    o "PARAM",                                  -> new LiteralNode yytext
+    o "PARAM",                                  -> new LiteralNode $1
     o "Param . . .",                            -> new SplatNode $1
   ]
 
@@ -249,10 +258,7 @@ grammar: {
 
   # In CoffeeScript, an object literal is simply a list of assignments.
   Object: [
-    o "{ AssignList }",                         -> new ObjectNode $2
-    o "{ IndentedAssignList }",                 -> new ObjectNode $2
-    o "{ AssignList , }",                       -> new ObjectNode $2
-    o "{ IndentedAssignList , }",               -> new ObjectNode $2
+    o "{ AssignList OptComma }",                -> new ObjectNode $2
   ]
 
   # Assignment of properties within an object literal can be separated by
@@ -261,14 +267,8 @@ grammar: {
     o "",                                       -> []
     o "AssignObj",                              -> [$1]
     o "AssignList , AssignObj",                 -> $1.concat [$3]
-    o "AssignList TERMINATOR AssignObj",        -> $1.concat [$3]
-    o "AssignList , TERMINATOR AssignObj",      -> $1.concat [$4]
-  ]
-
-  # An **AssignList** within a block indentation.
-  IndentedAssignList: [
-    o "INDENT AssignList OUTDENT",              -> $2
-    o "INDENT AssignList , OUTDENT",            -> $2
+    o "AssignList OptComma TERMINATOR AssignObj", -> $1.concat [$4]
+    o "AssignList OptComma INDENT AssignList OptComma OUTDENT", -> $1.concat $4
   ]
 
   # Class definitions have optional bodies of prototype property assignments,
@@ -320,14 +320,12 @@ grammar: {
 
   # The list of arguments to a function call.
   Arguments: [
-    o "CALL_START ArgList CALL_END",            -> $2
-    o "CALL_START ArgList , CALL_END",          -> $2
+    o "CALL_START ArgList OptComma CALL_END",   -> $2
   ]
 
   # Calling super.
   Super: [
-    o "SUPER CALL_START ArgList CALL_END",      -> new CallNode 'super', $3
-    o "SUPER CALL_START ArgList , CALL_END",    -> new CallNode 'super', $3
+    o "SUPER CALL_START ArgList OptComma CALL_END", -> new CallNode 'super', $3
   ]
 
   # A reference to the *this* current object.
@@ -355,8 +353,7 @@ grammar: {
 
   # The array literal.
   Array: [
-    o "[ ArgList ]",                            -> new ArrayNode $2
-    o "[ ArgList , ]",                          -> new ArrayNode $2
+    o "[ ArgList OptComma ]",                   -> new ArrayNode $2
   ]
 
   # The **ArgList** is both the list of objects passed into a function call,
@@ -370,8 +367,7 @@ grammar: {
     o "ArgList TERMINATOR Expression",          -> $1.concat [$3]
     o "ArgList , TERMINATOR Expression",        -> $1.concat [$4]
     o "ArgList , INDENT Expression",            -> $1.concat [$4]
-    o "ArgList OUTDENT"
-    o "ArgList , OUTDENT"
+    o "ArgList OptComma OUTDENT"
   ]
 
   # Just simple, comma-separated, required arguments (no fancy syntax). We need
@@ -411,13 +407,15 @@ grammar: {
   # A language extension to CoffeeScript from the outside. We simply pass
   # it through unaltered.
   Extension: [
-    o "EXTENSION",                              -> yytext
+    o "EXTENSION"
   ]
 
   # The condition portion of a while loop.
   WhileSource: [
     o "WHILE Expression",                       -> new WhileNode $2
-    o "WHILE Expression WHEN Expression",       -> new WhileNode $2, {filter : $4}
+    o "WHILE Expression WHEN Expression",       -> new WhileNode $2, {guard : $4}
+    o "UNTIL Expression",                       -> new WhileNode $2, {invert: true}
+    o "UNTIL Expression WHEN Expression",       -> new WhileNode $2, {invert: true, guard: $4}
   ]
 
   # The while loop can either be normal, with a block of expressions to execute,
@@ -437,45 +435,55 @@ grammar: {
     o "FOR ForVariables ForSource Block",       -> new ForNode $4, $3, $2[0], $2[1]
   ]
 
+  # An array of all accepted values for a variable inside the loop. This
+  # enables support for pattern matching.
+  ForValue: [
+    o "Identifier"
+    o "Array",                                  -> new ValueNode $1
+    o "Object",                                 -> new ValueNode $1
+  ]
+
   # An array or range comprehension has variables for the current element and
   # (optional) reference to the current index. Or, *key, value*, in the case
   # of object comprehensions.
   ForVariables: [
-    o "Identifier",                             -> [$1]
-    o "Identifier , Identifier",                -> [$1, $3]
+    o "ForValue",                               -> [$1]
+    o "ForValue , ForValue",                    -> [$1, $3]
   ]
 
-  # The source of a comprehension is an array or object with an optional filter
+  # The source of a comprehension is an array or object with an optional guard
   # clause. If it's an array comprehension, you can also choose to step through
   # in fixed-size increments.
   ForSource: [
     o "IN Expression",                               -> {source: $2}
     o "OF Expression",                               -> {source: $2, object: true}
-    o "IN Expression WHEN Expression",               -> {source: $2, filter: $4}
-    o "OF Expression WHEN Expression",               -> {source: $2, filter: $4, object: true}
+    o "IN Expression WHEN Expression",               -> {source: $2, guard: $4}
+    o "OF Expression WHEN Expression",               -> {source: $2, guard: $4, object: true}
     o "IN Expression BY Expression",                 -> {source: $2, step:   $4}
-    o "IN Expression WHEN Expression BY Expression", -> {source: $2, filter: $4; step:   $6}
-    o "IN Expression BY Expression WHEN Expression", -> {source: $2, step:   $4, filter: $6}
+    o "IN Expression WHEN Expression BY Expression", -> {source: $2, guard: $4, step:   $6}
+    o "IN Expression BY Expression WHEN Expression", -> {source: $2, step:   $4, guard: $6}
   ]
 
   # The CoffeeScript switch/when/else block replaces the JavaScript
   # switch/case/default by compiling into an if-else chain.
   Switch: [
-    o "SWITCH Expression INDENT Whens OUTDENT", -> $4.rewrite_condition $2
-    o "SWITCH Expression INDENT Whens ELSE Block OUTDENT", -> $4.rewrite_condition($2).add_else $6, true
+    o "SWITCH Expression INDENT Whens OUTDENT", -> $4.switches_over $2
+    o "SWITCH Expression INDENT Whens ELSE Block OUTDENT", -> $4.switches_over($2).add_else $6, true
+    o "SWITCH INDENT Whens OUTDENT",            -> $3
+    o "SWITCH INDENT Whens ELSE Block OUTDENT", -> $3.add_else $5, true
   ]
 
   # The inner list of whens is left recursive. At code-generation time, the
   # IfNode will rewrite them into a proper chain.
   Whens: [
     o "When"
-    o "Whens When",                             -> $1.push $2
+    o "Whens When",                             -> $1.add_else $2
   ]
 
   # An individual **When** clause, with action.
   When: [
-    o "LEADING_WHEN SimpleArgs Block",            -> new IfNode $2, $3, null, {statement: true}
-    o "LEADING_WHEN SimpleArgs Block TERMINATOR", -> new IfNode $2, $3, null, {statement: true}
+    o "LEADING_WHEN SimpleArgs Block",            -> new IfNode $2, $3, {statement: true}
+    o "LEADING_WHEN SimpleArgs Block TERMINATOR", -> new IfNode $2, $3, {statement: true}
     o "Comment TERMINATOR When",                  -> $3.comment: $1; $3
   ]
 
@@ -484,6 +492,7 @@ grammar: {
   # ambiguity.
   IfStart: [
     o "IF Expression Block",                    -> new IfNode $2, $3
+    o "UNLESS Expression Block",                -> new IfNode $2, $3, {invert: true}
     o "IfStart ElsIf",                          -> $1.add_else $2
   ]
 
@@ -502,10 +511,10 @@ grammar: {
   # *if* and *unless*.
   If: [
     o "IfBlock"
-    o "Statement IF Expression",                -> new IfNode $3, Expressions.wrap([$1]), null, {statement: true}
-    o "Expression IF Expression",               -> new IfNode $3, Expressions.wrap([$1]), null, {statement: true}
-    o "Statement UNLESS Expression",            -> new IfNode $3, Expressions.wrap([$1]), null, {statement: true, invert: true}
-    o "Expression UNLESS Expression",           -> new IfNode $3, Expressions.wrap([$1]), null, {statement: true, invert: true}
+    o "Statement IF Expression",                -> new IfNode $3, Expressions.wrap([$1]), {statement: true}
+    o "Expression IF Expression",               -> new IfNode $3, Expressions.wrap([$1]), {statement: true}
+    o "Statement UNLESS Expression",            -> new IfNode $3, Expressions.wrap([$1]), {statement: true, invert: true}
+    o "Expression UNLESS Expression",           -> new IfNode $3, Expressions.wrap([$1]), {statement: true, invert: true}
   ]
 
   # Arithmetic and logical operators, working on one or more operands.
@@ -595,10 +604,10 @@ operators: [
   ["right",     'INDENT']
   ["left",      'OUTDENT']
   ["right",     'WHEN', 'LEADING_WHEN', 'IN', 'OF', 'BY', 'THROW']
-  ["right",     'FOR', 'NEW', 'SUPER', 'CLASS']
+  ["right",     'FOR', 'WHILE', 'UNTIL', 'NEW', 'SUPER', 'CLASS']
   ["left",      'EXTENDS']
   ["right",     'ASSIGN', 'RETURN']
-  ["right",     '->', '=>', '<-', 'UNLESS', 'IF', 'ELSE', 'WHILE']
+  ["right",     '->', '=>', '<-', 'UNLESS', 'IF', 'ELSE']
 ]
 
 # Wrapping Up
