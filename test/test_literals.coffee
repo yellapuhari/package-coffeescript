@@ -14,6 +14,21 @@ neg: (3 -4)
 ok neg is -1
 
 
+# Decimal number literals.
+value: .25 + .75
+ok value is 1
+value: 0.0 + -.25 - -.75 + 0.0
+ok value is 0.5
+
+# Decimals don't interfere with ranges.
+ok [0..10].join(' ') is  '0 1 2 3 4 5 6 7 8 9 10'
+ok [0...10].join(' ') is '0 1 2 3 4 5 6 7 8 9'
+
+
+# Can call methods directly on numbers.
+4.toFixed(10) is '4.0000000000'
+
+
 func: ->
   return if true
 
@@ -25,18 +40,18 @@ reg: /\\/
 
 ok reg(str) and str is '\\'
 
-trailing_comma: [1, 2, 3,]
-ok (trailing_comma[0] is 1) and (trailing_comma[2] is 3) and (trailing_comma.length is 3)
+trailingComma: [1, 2, 3,]
+ok (trailingComma[0] is 1) and (trailingComma[2] is 3) and (trailingComma.length is 3)
 
-trailing_comma: [
+trailingComma: [
   1, 2, 3,
   4, 5, 6
   7, 8, 9,
 ]
-(sum: (sum or 0) + n) for n in trailing_comma
+(sum: (sum or 0) + n) for n in trailingComma
 
-trailing_comma: {k1: "v1", k2: 4, k3: (-> true),}
-ok trailing_comma.k3() and (trailing_comma.k2 is 4) and (trailing_comma.k1 is "v1")
+trailingComma: {k1: "v1", k2: 4, k3: (-> true),}
+ok trailingComma.k3() and (trailingComma.k2 is 4) and (trailingComma.k1 is "v1")
 
 multiline: {a: 15,
   b: 26}
@@ -78,9 +93,24 @@ ok moe.hello() is 'Hello Moe'
 
 
 obj: {
-  'is':  -> yes,
-  'not': -> no,
+  is:     -> yes,
+  'not':  -> no,
 }
 
 ok obj.is()
 ok not obj.not()
+
+
+# Funky indentation within non-comma-seperated arrays.
+result: [['a']
+ {b: 'c'}]
+
+ok result[0][0] is 'a'
+ok result[1]['b'] is 'c'
+
+
+# Object literals should be able to include keywords.
+obj: {class: 'höt'}
+obj.function: 'dog'
+
+ok obj.class + obj.function is 'hötdog'

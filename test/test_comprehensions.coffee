@@ -39,6 +39,13 @@ results: x for x in [0..25] by 5
 ok results.join(' ') is '0 5 10 15 20 25'
 
 
+# And can loop downwards, with a negative step.
+results: x for x in [5..1] by -1
+
+ok results.join(' ') is '5 4 3 2 1'
+ok results.join(' ') is [(10-5)..(-2+3)].join(' ')
+
+
 # Multiline array comprehension with filter.
 evens: for num in [1, 2, 3, 4, 5, 6] when num % 2 is 0
            num *= -1
@@ -49,22 +56,30 @@ ok evens.join(', ') is '4, 6, 8'
 
 
 # The in operator still works, standalone.
-ok 2 in evens
+ok 2 of evens
 
 
 # Ensure that the closure wrapper preserves local variables.
 obj: {}
 
-methods: ['one', 'two', 'three']
-
-for method in methods
-  name: method
-  obj[name]: ->
-    "I'm " + name
+for method in ['one', 'two', 'three']
+  obj[method]: ->
+    "I'm " + method
 
 ok obj.one()   is "I'm one"
 ok obj.two()   is "I'm two"
 ok obj.three() is "I'm three"
+
+
+# Even when referenced in the filter.
+list: ['one', 'two', 'three']
+
+methods: for num, i in list when num isnt 'two' and i isnt 1
+  -> num + ' ' + i
+
+ok methods.length is 2
+ok methods[0]() is 'one 0'
+ok methods[1]() is 'three 2'
 
 
 # Naked ranges are expanded into arrays.
@@ -73,17 +88,17 @@ ok(num % 2 is 0 for num in array by 2)
 
 
 # Nested comprehensions.
-multi_liner:
+multiLiner:
   for x in [3..5]
     for y in [3..5]
       [x, y]
 
-single_liner:
+singleLiner:
   [x, y] for y in [3..5] for x in [3..5]
 
-ok multi_liner.length is single_liner.length
-ok 5 is multi_liner[2][2][1]
-ok 5 is single_liner[2][2][1]
+ok multiLiner.length is singleLiner.length
+ok 5 is multiLiner[2][2][1]
+ok 5 is singleLiner[2][2][1]
 
 
 # Comprehensions within parentheses.

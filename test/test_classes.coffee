@@ -55,6 +55,8 @@ ok (new TwoClass('three')).name is 'three'
 Base: ->
 Base::func: (string) ->
   'zero/' + string
+Base::['func-func']: (string) ->
+  "dynamic-$string"
 
 FirstChild: ->
 FirstChild extends Base
@@ -77,6 +79,8 @@ result: (new ThirdChild()).func 'four'
 
 ok result is 'zero/one/two/three/four'
 
+ok (new ThirdChild())['func-func']('thing') is 'dynamic-thing'
+
 
 TopClass: (arg) ->
   @prop: 'top-' + arg
@@ -94,3 +98,49 @@ SuperClass extends TopClass
 SubClass extends SuperClass
 
 ok (new SubClass()).prop is 'top-super-sub'
+
+
+# '@' referring to the current instance, and not being coerced into a call.
+class ClassName
+  amI: ->
+    @ instanceof ClassName
+
+obj: new ClassName()
+ok obj.amI()
+
+
+# super() calls in constructors of classes that are defined as object properties.
+class Hive
+  constructor: (name) -> @name: name
+
+class Hive.Bee extends Hive
+  constructor: (name) -> super name
+
+maya: new Hive.Bee 'Maya'
+ok maya.name is 'Maya'
+
+
+# Class with JS-keyword properties.
+class Class
+  class: 'class'
+  name: -> @class
+
+instance: new Class()
+ok instance.class is 'class'
+ok instance.name() is 'class'
+
+
+# Classes with methods that are pre-bound to the instance.
+class Dog
+
+  constructor: (name) ->
+    @name: name
+
+  bark: =>
+    "$@name woofs!"
+
+spark: new Dog('Spark')
+fido:  new Dog('Fido')
+fido.bark: spark.bark
+
+ok fido.bark() is 'Spark woofs!'

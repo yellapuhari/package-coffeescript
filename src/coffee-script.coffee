@@ -22,7 +22,7 @@ else
   helpers:      this.helpers
 
 # The current CoffeeScript version number.
-exports.VERSION: '0.6.2'
+exports.VERSION: '0.7.0'
 
 # Instantiate a Lexer for our use here.
 lexer: new Lexer()
@@ -55,13 +55,6 @@ exports.run: ((code, options) ->
   eval exports.compile code, options
 )
 
-# Extend CoffeeScript with a custom language extension. It should hook in to
-# the **Lexer** (as a peer of any of the lexer's tokenizing methods), and
-# push a token on to the stack that contains a **Node** as the value (as a
-# peer of the nodes in [nodes.coffee](nodes.html)).
-exports.extend: (func) ->
-  Lexer.extensions.push func
-
 # The real Lexer produces a generic stream of tokens. This object provides a
 # thin wrapper around it, compatible with the Jison API. We can then pass it
 # directly as a "Jison lexer".
@@ -76,7 +69,6 @@ parser.lexer: {
     @tokens: tokens
     @pos: 0
   upcomingInput: -> ""
-  showPosition: -> @pos
 }
 
 # Activate CoffeeScript in the browser by having it compile and evaluate
@@ -84,10 +76,10 @@ parser.lexer: {
 # on page load. Unfortunately, the text contents of remote scripts cannot be
 # accessed from the browser, so only inline script tags will work.
 if document? and document.getElementsByTagName
-  process_scripts: ->
+  processScripts: ->
     for tag in document.getElementsByTagName('script') when tag.type is 'text/coffeescript'
       eval exports.compile tag.innerHTML
   if window.addEventListener
-    window.addEventListener 'load', process_scripts, false
+    window.addEventListener 'load', processScripts, false
   else if window.attachEvent
-    window.attachEvent 'onload', process_scripts
+    window.attachEvent 'onload', processScripts

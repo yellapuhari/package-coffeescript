@@ -30,10 +30,10 @@ unwrap: /function\s*\(\)\s*\{\s*return\s*([\s\S]*);\s*\}/
 # we pass the pattern-defining string, the action to run, and extra options,
 # optionally. If no action is specified, we simply pass the value of the
 # previous nonterminal.
-o: (pattern_string, action, options) ->
-  return [pattern_string, '$$ = $1;', options] unless action
+o: (patternString, action, options) ->
+  return [patternString, '$$ = $1;', options] unless action
   action: if match: (action + '').match(unwrap) then match[1] else "($action())"
-  [pattern_string, "$$ = $action;", options]
+  [patternString, "$$ = $action;", options]
 
 # Grammatical Rules
 # -----------------
@@ -87,7 +87,6 @@ grammar: {
   Expression: [
     o "Value"
     o "Call"
-    o "Curry"
     o "Code"
     o "Operation"
     o "Assign"
@@ -100,8 +99,6 @@ grammar: {
     o "Class"
     o "Splat"
     o "Existence"
-    o "Comment"
-    o "Extension"
   ]
 
   # A an indented block of expressions. Note that the [Rewriter](rewriter.html)
@@ -110,7 +107,6 @@ grammar: {
   Block: [
     o "INDENT Body OUTDENT",                    -> $2
     o "INDENT OUTDENT",                         -> new Expressions()
-    o "TERMINATOR Comment",                     -> Expressions.wrap [$2]
   ]
 
   # A literal identifier, a variable name or property.
@@ -151,21 +147,12 @@ grammar: {
     o "AlphaNumeric"
     o "Identifier ASSIGN Expression",           -> new AssignNode new ValueNode($1), $3, 'object'
     o "AlphaNumeric ASSIGN Expression",         -> new AssignNode new ValueNode($1), $3, 'object'
-    o "Comment"
   ]
 
   # A return statement from a function body.
   Return: [
     o "RETURN Expression",                      -> new ReturnNode $2
     o "RETURN",                                 -> new ReturnNode new ValueNode new LiteralNode 'null'
-  ]
-
-  # A comment. Because CoffeeScript passes comments through to JavaScript, we
-  # have to parse comments like any other construct, and identify all of the
-  # positions in which they can occur in the grammar.
-  Comment: [
-    o "COMMENT",                                -> new CommentNode $1
-    o "HERECOMMENT",                            -> new CommentNode $1, 'herecomment'
   ]
 
   # [The existential operator](http://jashkenas.github.com/coffee-script/#existence).
@@ -253,7 +240,8 @@ grammar: {
   # Indexing into an object or array using bracket notation.
   Index: [
     o "INDEX_START Expression INDEX_END",       -> new IndexNode $2
-    o "SOAKED_INDEX_START Expression SOAKED_INDEX_END", -> new IndexNode $2, 'soak'
+    o "INDEX_SOAK Index",                       -> $2.soakNode: yes; $2
+    o "INDEX_PROTO Index",                      -> $2.proto: yes; $2
   ]
 
   # In CoffeeScript, an object literal is simply a list of assignments.
@@ -297,13 +285,8 @@ grammar: {
   # and calling `super()`
   Call: [
     o "Invocation"
-    o "NEW Invocation",                         -> $2.new_instance()
+    o "NEW Invocation",                         -> $2.newInstance()
     o "Super"
-  ]
-
-  # Binds a function call to a context and/or arguments.
-  Curry: [
-    o "Value <- Arguments",                     -> new CurryNode $1, $3
   ]
 
   # Extending an object by setting its prototype chain to reference a parent
@@ -325,7 +308,7 @@ grammar: {
 
   # Calling super.
   Super: [
-    o "SUPER CALL_START ArgList OptComma CALL_END", -> new CallNode 'super', $3
+    o "SUPER Arguments",                        -> new CallNode 'super', $2
   ]
 
   # A reference to the *this* current object.
@@ -362,12 +345,9 @@ grammar: {
   ArgList: [
     o "",                                       -> []
     o "Expression",                             -> [$1]
-    o "INDENT Expression",                      -> [$2]
     o "ArgList , Expression",                   -> $1.concat [$3]
-    o "ArgList TERMINATOR Expression",          -> $1.concat [$3]
-    o "ArgList , TERMINATOR Expression",        -> $1.concat [$4]
-    o "ArgList , INDENT Expression",            -> $1.concat [$4]
-    o "ArgList OptComma OUTDENT"
+    o "ArgList OptComma TERMINATOR Expression", -> $1.concat [$4]
+    o "ArgList OptComma INDENT ArgList OptComma OUTDENT", -> $1.concat $4
   ]
 
   # Just simple, comma-separated, required arguments (no fancy syntax). We need
@@ -404,12 +384,6 @@ grammar: {
     o "( Line )",                               -> new ParentheticalNode $2
   ]
 
-  # A language extension to CoffeeScript from the outside. We simply pass
-  # it through unaltered.
-  Extension: [
-    o "EXTENSION"
-  ]
-
   # The condition portion of a while loop.
   WhileSource: [
     o "WHILE Expression",                       -> new WhileNode $2
@@ -421,9 +395,15 @@ grammar: {
   # The while loop can either be normal, with a block of expressions to execute,
   # or postfix, with a single expression. There is no do..while.
   While: [
-    o "WhileSource Block",                      -> $1.add_body $2
-    o "Statement WhileSource",                  -> $2.add_body Expressions.wrap [$1]
-    o "Expression WhileSource",                 -> $2.add_body Expressions.wrap [$1]
+    o "WhileSource Block",                      -> $1.addBody $2
+    o "Statement WhileSource",                  -> $2.addBody Expressions.wrap [$1]
+    o "Expression WhileSource",                 -> $2.addBody Expressions.wrap [$1]
+    o "Loop",                                   -> $1
+  ]
+
+  Loop: [
+    o "LOOP Block",                             -> new WhileNode(new LiteralNode 'true').addBody $2
+    o "LOOP Expression",                        -> new WhileNode(new LiteralNode 'true').addBody Expressions.wrap [$2]
   ]
 
   # Array, object, and range comprehensions, at the most generic level.
@@ -467,44 +447,33 @@ grammar: {
   # The CoffeeScript switch/when/else block replaces the JavaScript
   # switch/case/default by compiling into an if-else chain.
   Switch: [
-    o "SWITCH Expression INDENT Whens OUTDENT", -> $4.switches_over $2
-    o "SWITCH Expression INDENT Whens ELSE Block OUTDENT", -> $4.switches_over($2).add_else $6, true
+    o "SWITCH Expression INDENT Whens OUTDENT", -> $4.switchesOver $2
+    o "SWITCH Expression INDENT Whens ELSE Block OUTDENT", -> $4.switchesOver($2).addElse $6, true
     o "SWITCH INDENT Whens OUTDENT",            -> $3
-    o "SWITCH INDENT Whens ELSE Block OUTDENT", -> $3.add_else $5, true
+    o "SWITCH INDENT Whens ELSE Block OUTDENT", -> $3.addElse $5, true
   ]
 
   # The inner list of whens is left recursive. At code-generation time, the
   # IfNode will rewrite them into a proper chain.
   Whens: [
     o "When"
-    o "Whens When",                             -> $1.add_else $2
+    o "Whens When",                             -> $1.addElse $2
   ]
 
   # An individual **When** clause, with action.
   When: [
     o "LEADING_WHEN SimpleArgs Block",            -> new IfNode $2, $3, {statement: true}
     o "LEADING_WHEN SimpleArgs Block TERMINATOR", -> new IfNode $2, $3, {statement: true}
-    o "Comment TERMINATOR When",                  -> $3.comment: $1; $3
   ]
 
   # The most basic form of *if* is a condition and an action. The following
   # if-related rules are broken up along these lines in order to avoid
   # ambiguity.
-  IfStart: [
+  IfBlock: [
     o "IF Expression Block",                    -> new IfNode $2, $3
     o "UNLESS Expression Block",                -> new IfNode $2, $3, {invert: true}
-    o "IfStart ElsIf",                          -> $1.add_else $2
-  ]
-
-  # An **IfStart** can optionally be followed by an else block.
-  IfBlock: [
-    o "IfStart"
-    o "IfStart ELSE Block",                     -> $1.add_else $3
-  ]
-
-  # An *else if* continuation of the *if* expression.
-  ElsIf: [
-    o "ELSE IF Expression Block",               -> (new IfNode($3, $4)).force_statement()
+    o "IfBlock ELSE IF Expression Block",       -> $1.addElse (new IfNode($4, $5)).forceStatement()
+    o "IfBlock ELSE Block",                     -> $1.addElse $3
   ]
 
   # The full complement of *if* expressions, including postfix one-liner
@@ -572,7 +541,10 @@ grammar: {
     o "Expression ?= Expression",               -> new OpNode '?=', $1, $3
 
     o "Expression INSTANCEOF Expression",       -> new OpNode 'instanceof', $1, $3
-    o "Expression IN Expression",               -> new OpNode 'in', $1, $3
+    o "Expression IN Expression",               -> new InNode $1, $3
+    o "Expression OF Expression",               -> new OpNode 'in', $1, $3
+    o "Expression ! IN Expression",             -> new OpNode '!', new InNode $1, $4
+    o "Expression ! OF Expression",             -> new OpNode '!', new ParentheticalNode new OpNode 'in', $1, $4
   ]
 
 }
@@ -604,10 +576,10 @@ operators: [
   ["right",     'INDENT']
   ["left",      'OUTDENT']
   ["right",     'WHEN', 'LEADING_WHEN', 'IN', 'OF', 'BY', 'THROW']
-  ["right",     'FOR', 'WHILE', 'UNTIL', 'NEW', 'SUPER', 'CLASS']
+  ["right",     'FOR', 'WHILE', 'UNTIL', 'LOOP', 'NEW', 'SUPER', 'CLASS']
   ["left",      'EXTENDS']
   ["right",     'ASSIGN', 'RETURN']
-  ["right",     '->', '=>', '<-', 'UNLESS', 'IF', 'ELSE']
+  ["right",     '->', '=>', 'UNLESS', 'IF', 'ELSE']
 ]
 
 # Wrapping Up

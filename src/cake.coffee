@@ -26,7 +26,7 @@ helpers.extend global, {
   # and the function to run as the action itself.
   task: (name, description, action) ->
     [action, description]: [description, action] unless action
-    tasks[name]: {name: name, description: description, action: action}
+    tasks[name]: {name, description, action}
 
   # Define an option that the Cakefile accepts. The parsed options hash,
   # containing all of the command-line options passed, will be made available
@@ -36,7 +36,7 @@ helpers.extend global, {
 
   # Invoke another task in the current Cakefile.
   invoke: (name) ->
-    no_such_task name unless tasks[name]
+    missingTask name unless tasks[name]
     tasks[name].action options
 
 }
@@ -50,12 +50,12 @@ exports.run: ->
     args: process.argv[2...process.argv.length]
     CoffeeScript.run fs.readFileSync('Cakefile').toString(), {source: 'Cakefile'}
     oparse: new optparse.OptionParser switches
-    return print_tasks() unless args.length
+    return printTasks() unless args.length
     options: oparse.parse(args)
     invoke arg for arg in options.arguments
 
 # Display the list of Cake tasks in a format similar to `rake -T`
-print_tasks: ->
+printTasks: ->
   puts ''
   for name, task of tasks
     spaces: 20 - name.length
@@ -65,6 +65,6 @@ print_tasks: ->
   puts oparse.help() if switches.length
 
 # Print an error and exit when attempting to all an undefined task.
-no_such_task: (task) ->
+missingTask: (task) ->
   puts "No such task: \"$task\""
   process.exit 1

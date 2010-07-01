@@ -34,3 +34,19 @@ func: -> val: + 1
 
 ok 2 > (func null) < 2
 ok val is 1
+
+
+# Allow "if x not in y"
+obj: {a: true}
+ok 'a' of obj
+ok 'b' not of obj
+
+# And for "a in b" with array presence.
+ok 100 in [100, 200, 300]
+array: [100, 200, 300]
+ok 100 in array
+ok 1 not in array
+
+list: [1, 2, 7]
+result: if list[2] in [7, 10] then 100 else -1
+ok result is 100
