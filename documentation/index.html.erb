@@ -46,7 +46,7 @@
         <a href="#conditionals">Conditionals, Ternaries, and Conditional Assignment</a>
         <a href="#aliases">Aliases</a>
         <a href="#splats">Splats...</a>
-        <a href="#while">While &amp; Until Loops</a>
+        <a href="#while">While, Until, and Loop</a>
         <a href="#comprehensions">Comprehensions (Arrays, Objects, and Ranges)</a>
         <a href="#slice_splice">Array Slicing and Splicing with Ranges</a>
         <a href="#expressions">Everything is an Expression</a>
@@ -124,13 +124,12 @@ alert reverse '.eeffoC yrT'</textarea></div>
       it compiles into clean JavaScript (the good parts) that can use existing
       JavaScript libraries seamlessly, and passes through
       <a href="http://www.jslint.com/">JSLint</a> without warnings. The compiled
-      output is quite readable &mdash; pretty-printed, with comments
-      preserved intact.
+      output is pretty-printed and quite readable.
     </p>
 
     <p>
       <b>Latest Version:</b>
-      <a href="http://github.com/jashkenas/coffee-script/tarball/0.6.2">0.6.2</a>
+      <a href="http://github.com/jashkenas/coffee-script/tarball/0.7.0">0.7.0</a>
     </p>
 
     <h2>
@@ -140,7 +139,7 @@ alert reverse '.eeffoC yrT'</textarea></div>
 
     <p><i>CoffeeScript on the left, compiled JavaScript output on the right.</i></p>
 
-    <%= code_for('overview', 'cubed_list') %>
+    <%= code_for('overview', 'cubes') %>
 
     <p>
       For a longer CoffeeScript example, check out
@@ -176,7 +175,7 @@ alert reverse '.eeffoC yrT'</textarea></div>
       Then clone the CoffeeScript
       <a href="http://github.com/jashkenas/coffee-script">source repository</a>
       from GitHub, or download the latest
-      release: <a href="http://github.com/jashkenas/coffee-script/tarball/0.6.2">0.6.2</a>.
+      release: <a href="http://github.com/jashkenas/coffee-script/tarball/0.7.0">0.7.0</a>.
       To install the CoffeeScript compiler system-wide
       under <tt>/usr/local</tt>, open the directory and run:
     </p>
@@ -332,7 +331,8 @@ coffee --print app/scripts/*.coffee > concatenation.js</pre>
 
     <p>
       You don't need to use parentheses to invoke a function if you're passing
-      arguments:<br /><tt>print "coffee"</tt>
+      arguments:<br /><tt>print "coffee"</tt>. Implicit parentheses wrap forwards
+      to the end of the line, or block expression.
     </p>
 
     <p>
@@ -379,6 +379,12 @@ coffee --print app/scripts/*.coffee > concatenation.js</pre>
       and match the two styles.
     </p>
     <%= code_for('objects_and_arrays', 'song.join(",")') %>
+    <p>
+      In JavaScript, you can't use reserved words, like <tt>class</tt>, as properties
+      of an object, without quoting them as strings. CoffeeScript notices and quotes 
+      them for you, so you don't have to worry about it (say, when using jQuery).
+    </p>
+    <%= code_for('objects_reserved') %>
 
     <p>
       <span id="lexical_scope" class="bookmark"></span>
@@ -387,7 +393,7 @@ coffee --print app/scripts/*.coffee > concatenation.js</pre>
       are properly declared within lexical scope &mdash; you never need to write
       <tt>var</tt> yourself.
     </p>
-    <%= code_for('scope', 'new_num') %>
+    <%= code_for('scope', 'inner') %>
     <p>
       Notice how the all of the variable declarations have been pushed up to
       the top of the closest scope, the first time they appear.
@@ -469,6 +475,10 @@ coffee --print app/scripts/*.coffee > concatenation.js</pre>
     <p>
       As a shortcut for <tt>this.property</tt>, you can use <tt>@property</tt>.
     </p>
+    <p>
+      You can use <tt>in</tt> to test for array presence, and <tt>of</tt> to 
+      test for JavaScript object-key presence.
+    </p>
     <%= code_for('aliases') %>
 
     <p>
@@ -483,7 +493,7 @@ coffee --print app/scripts/*.coffee > concatenation.js</pre>
 
     <p>
       <span id="while" class="bookmark"></span>
-      <b class="header">While &amp; Until Loops</b>
+      <b class="header">While, Until, and Loop</b>
       The only low-level loop that CoffeeScript provides is the <b>while</b> loop. The
       main difference from JavaScript is that the <b>while</b> loop can be used
       as an expression, returning an array containing the result of each iteration
@@ -491,9 +501,10 @@ coffee --print app/scripts/*.coffee > concatenation.js</pre>
     </p>
     <%= code_for('while', 'lyrics.join("\n")') %>
     <p>
-      For readability, the <b>until</b> loop serves as an inverted <b>while</b> loop.
+      For readability, the <b>until</b> keyword is equivalent to <tt>while not</tt>,
+      and the <b>loop</b> keyword is equivalent to <tt>while true</tt>.
       Other JavaScript loops, such as <b>for</b> loops and <b>do-while</b> loops
-      can be mimicked by variations on <b>while</b>, but the hope is that you
+      can be mimicked by variations on <b>loop</b>, but the hope is that you
       won't need to do that with CoffeeScript, either because you're using
       <b>each</b> (<b>forEach</b>) style iterators, or...
     </p>
@@ -512,8 +523,7 @@ coffee --print app/scripts/*.coffee > concatenation.js</pre>
     <p>
       If you know the start and end of your loop, or would like to step through
       in fixed-size increments, you can use a range to specify the start and
-      end of your comprehension. (The long line-breaking "for" definitions in
-      the compiled JS below allow ranges to count downwards, as well as upwards).
+      end of your comprehension.
     </p>
     <%= code_for('range_comprehensions', 'countdown') %>
     <p>
@@ -533,7 +543,7 @@ coffee --print app/scripts/*.coffee > concatenation.js</pre>
       the slice, and the second is the index of the last one. Three dots signify
       a range that excludes the end.
     </p>
-    <%= code_for('slices', 'numbers_copy') %>
+    <%= code_for('slices', 'copy') %>
     <p>
       The same syntax can be used with assignment to replace a segment of an
       array with new values (to splice it).
@@ -656,7 +666,7 @@ coffee --print app/scripts/*.coffee > concatenation.js</pre>
       on the right to the variables on the left. In the simplest case, it can be
       used for parallel assignment:
     </p>
-    <%= code_for('parallel_assignment', 'bait') %>
+    <%= code_for('parallel_assignment', 'theBait') %>
     <p>
       But it's also helpful for dealing with functions that return multiple
       values.
@@ -696,15 +706,6 @@ coffee --print app/scripts/*.coffee > concatenation.js</pre>
       have referred to the undefined "customer" property of the DOM element,
       and trying to call <tt>purchase()</tt> on it would have raised an exception.
     </p>
-    <p>
-      If you have more custom needs for function binding, CoffeeScript includes
-      the <tt>&lt;-</tt> bind operator, which works the same as ECMAScript 5
-      and Prototype.js's <tt>Function#bind</tt>. The first argument is the <tt>this</tt>
-      value, and the remainder are curried arguments. In the example below,
-      we curry a jQuery request for a URL, and then execute the bound function
-      with the missing callback argument.
-    </p>
-    <%= code_for('binding', true) %>
 
     <p>
       <span id="embedded" class="bookmark"></span>
@@ -770,7 +771,7 @@ coffee --print app/scripts/*.coffee > concatenation.js</pre>
       <b class="header">Multiline Strings and Heredocs</b>
       Multiline strings are allowed in CoffeeScript.
     </p>
-    <%= code_for('strings', 'moby_dick') %>
+    <%= code_for('strings', 'mobyDick') %>
     <p>
       Heredocs can be used to hold formatted or indentation-sensitive text
       (or, if you just don't feel like escaping quotes and apostrophes). The
@@ -902,6 +903,11 @@ coffee --print app/scripts/*.coffee > concatenation.js</pre>
         &mdash; a custom filter for rendering CoffeeScript inline within
         <a href="http://haml-lang.com/">HAML</a> templates.
       </li>
+      <li>
+        <b>jashkenas</b>'s <a href="http://jashkenas.github.com/docco/">Docco</a>
+        &mdash; A quick-and-dirty literate-programming-style documentation generator 
+        for CoffeeScript. Used to produce the annotated source.
+      </li>
     </ul>
 
     <h2>
@@ -923,6 +929,23 @@ coffee --print app/scripts/*.coffee > concatenation.js</pre>
       <span id="change_log" class="bookmark"></span>
       Change Log
     </h2>
+    
+    <p>
+      <b class="header" style="margin-top: 20px;">0.7.0</b>
+      Official CoffeeScript variable style is now camelCase, as in JavaScript.
+      Reserved words are now allowed as object keys, and will be quoted for you.
+      Range comprehensions now generate cleaner code, but you have to specify <tt>by -1</tt>
+      if you'd like to iterate downward. Reporting of syntax errors is greatly 
+      improved from the previous release. Running <tt>coffee</tt> with no arguments
+      now launches the REPL, with Readline support. The <tt>&amp;-</tt> bind operator
+      has been removed from CoffeeScript. The <tt>loop</tt> keyword was added,
+      which is equivalent to a <tt>while true</tt> loop. Comprehensions that contain
+      closures will now close over their variables, like the semantics of a <tt>forEach</tt>.
+      You can now use bound function in class definitions (bound to the instance).
+      For consistency, <tt>a in b</tt> is now an array presence check, and <tt>a of b</tt>
+      is an object-key check. Comments are no longer passed through to the generated
+      JavaScript.
+    </p>
 
     <p>
       <b class="header" style="margin-top: 20px;">0.6.2</b>
@@ -1175,7 +1198,7 @@ coffee --print app/scripts/*.coffee > concatenation.js</pre>
       source: $('#repl_source').val()
       window.compiled_js: ''
       try
-        window.compiled_js: CoffeeScript.compile source, {no_wrap: true}
+        window.compiled_js: CoffeeScript.compile source, {noWrap: true}
         $('#repl_results').text window.compiled_js
         $('#error').hide();
       catch error

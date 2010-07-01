@@ -57,8 +57,8 @@ ok 100 > 1 if 1 > 0
 ok true unless false
 ok true for i in [1..3]
 
-ok_func: (f) -> ok(f())
-ok_func -> true
+okFunc: (f) -> ok(f())
+okFunc -> true
 
 # Optional parens can be used in a nested fashion.
 call: (func) -> func()
@@ -154,4 +154,27 @@ result: sum ->
   7 + 9
 , ->
   1 + 3
+
 ok result is 20
+
+# Test more function passing:
+result: sum( ->
+  1 + 2
+, ->
+  2 + 1
+)
+ok result is 6
+
+sum: (a, b) -> a + b
+result: sum(1
+, 2)
+
+ok result is 3
+
+
+# Assignment to a Object.prototype-named variable should not leak to outer scope.
+(->
+  constructor: 'word'
+)()
+
+ok constructor isnt 'word'
