@@ -50,3 +50,18 @@ ok 1 not in array
 list: [1, 2, 7]
 result: if list[2] in [7, 10] then 100 else -1
 ok result is 100
+
+# And with array presence on an instance variable.
+obj: {
+  list: [1, 2, 3, 4, 5]
+  in_list: (value) -> value in @list
+}
+ok obj.in_list 4
+ok not obj.in_list 0
+
+# Non-spaced values still work.
+x: 10
+y: -5
+
+ok x*-y is 50
+ok x*+y is -50

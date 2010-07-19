@@ -54,7 +54,7 @@ exports.Lexer: class Lexer
       @extractNextToken()
     @closeIndentation()
     return @tokens if o.rewrite is off
-    (new Rewriter()).rewrite @tokens
+    (new Rewriter).rewrite @tokens
 
   # At every position, run through this list of attempted matches,
   # short-circuiting if any of them succeed. Their order determines precedence:
@@ -98,8 +98,8 @@ exports.Lexer: class Lexer
       else if include(RESERVED, id)
         @identifierError id
     unless forcedIdentifier
-      tag: id: CONVERSIONS[id]         if include COFFEE_ALIASES, id
-      return @tagHalfAssignment tag  if @prev() and @prev()[0] is 'ASSIGN' and include HALF_ASSIGNMENTS, tag
+      tag: id: CONVERSIONS[id]      if include COFFEE_ALIASES, id
+      return @tagHalfAssignment tag if @prev() and @prev()[0] is 'ASSIGN' and include HALF_ASSIGNMENTS, tag
     @token tag, id
     @token ']', ']' if close_index
     true
@@ -141,6 +141,10 @@ exports.Lexer: class Lexer
     return false unless match: @chunk.match(COMMENT)
     @line: + count match[1], "\n"
     @i: + match[1].length
+    if match[2]
+      comment: @sanitizeHeredoc match[2], {herecomment: true}
+      @token 'HERECOMMENT', comment.split MULTILINER
+      @token 'TERMINATOR', '\n'
     true
 
   # Matches JavaScript interpolated directly into the source via backticks.
@@ -260,6 +264,8 @@ exports.Lexer: class Lexer
       @assignmentError() if include JS_FORBIDDEN, @value
     else if value is ';'
       tag: 'TERMINATOR'
+    else if value is '?' and prevSpaced
+      tag: 'OP?'
     else if include(CALLABLE, @tag()) and not prevSpaced
       if value is '('
         tag: 'CALL_START'
@@ -292,18 +298,20 @@ exports.Lexer: class Lexer
       prev[0] is '@'
     if accessor then 'accessor' else false
 
-  # Sanitize a heredoc by escaping internal double quotes and
+  # Sanitize a heredoc or herecomment by escaping internal double quotes and
   # erasing all external indentation on the left-hand side.
   sanitizeHeredoc: (doc, options) ->
     while match: HEREDOC_INDENT.exec doc
       attempt: if match[2]? then match[2] else match[3]
       indent: attempt if not indent or attempt.length < indent.length
-    doc.replace(new RegExp("^" +indent, 'gm'), '')
-       .replace(MULTILINER, "\\n")
+    doc: doc.replace(new RegExp("^" +indent, 'gm'), '')
+    return doc if options.herecomment
+    doc.replace(MULTILINER, "\\n")
        .replace(new RegExp(options.quote, 'g'), "\\$options.quote")
 
   # Tag a half assignment.
   tagHalfAssignment: (tag) ->
+    tag:  '?' if tag is 'OP?'
     last: @tokens.pop()
     @tokens.push ["$tag=", "$tag=", last[2]]
     true
@@ -383,7 +391,7 @@ exports.Lexer: class Lexer
     if str.length < 3 or not starts str, '"'
       @token 'STRING', str
     else
-      lexer:    new Lexer()
+      lexer:    new Lexer
       tokens:   []
       quote:    str.substring 0, 1
       [i, pi]:  [1, 1]
@@ -401,6 +409,7 @@ exports.Lexer: class Lexer
           tokens.push ['STRING', "$quote${ str.substring(pi, i) }$quote"] if pi < i
           inner: expr.substring(2, expr.length - 1)
           if inner.length
+            inner: inner.replace new RegExp('\\\\' + quote, 'g'), quote
             nested: lexer.tokenize "($inner)", {line: @line}
             (tok[0]: ')') for tok, idx in nested when tok[0] is 'CALL_END'
             nested.pop()
@@ -504,9 +513,9 @@ IDENTIFIER    : /^([a-zA-Z\$_](\w|\$)*)/
 NUMBER        : /^(((\b0(x|X)[0-9a-fA-F]+)|((\b[0-9]+(\.[0-9]+)?|\.[0-9]+)(e[+\-]?[0-9]+)?)))\b/i
 HEREDOC       : /^("{6}|'{6}|"{3}\n?([\s\S]*?)\n?([ \t]*)"{3}|'{3}\n?([\s\S]*?)\n?([ \t]*)'{3})/
 INTERPOLATION : /^\$([a-zA-Z_@]\w*(\.\w+)*)/
-OPERATOR      : /^([+\*&|\/\-%=<>:!?]+)([ \t]*)/
+OPERATOR      : /^(-[\-=>]?|\+[+=]?|[*&|\/%=<>:!?]+)([ \t]*)/
 WHITESPACE    : /^([ \t]+)/
-COMMENT       : /^(\s*#{3}(?!#)[ \t]*\n+([\s\S]*?)[ \t]*\n+[ \t]*#{3}|(\s*#[^\n]*)+)/
+COMMENT       : /^(\s*#{3}(?!#)[ \t]*\n+([\s\S]*?)[ \t]*\n+[ \t]*#{3}|(\s*#(?!##[^#])[^\n]*)+)/
 CODE          : /^((-|=)>)/
 MULTI_DENT    : /^((\n([ \t]*))+)(\.)?/
 LAST_DENTS    : /\n([ \t]*)/g
@@ -525,7 +534,7 @@ MULTILINER      : /\n/g
 STRING_NEWLINES : /\n[ \t]*/g
 NO_NEWLINE      : /^([+\*&|\/\-%=<>:!.\\][<>=&|]*|and|or|is|isnt|not|delete|typeof|instanceof)$/
 HEREDOC_INDENT  : /(\n+([ \t]*)|^([ \t]+))/g
-ASSIGNED        : /^([a-zA-Z\$_]\w*[ \t]*?[:=])/
+ASSIGNED        : /^([a-zA-Z\$_]\w*[ \t]*?[:=][^=])/
 NEXT_CHARACTER  : /^\s*(\S)/
 
 # Tokens which a regular expression will never immediately follow, but which
@@ -549,7 +558,7 @@ CALLABLE: ['IDENTIFIER', 'SUPER', ')', ']', '}', 'STRING', '@', 'THIS', '?', '::
 LINE_BREAK: ['INDENT', 'OUTDENT', 'TERMINATOR']
 
 # Half-assignments...
-HALF_ASSIGNMENTS: ['-', '+', '/', '*', '%', '||', '&&', '?']
+HALF_ASSIGNMENTS: ['-', '+', '/', '*', '%', '||', '&&', '?', 'OP?']
 
 # Conversions from CoffeeScript operators into JavaScript ones.
 CONVERSIONS: {

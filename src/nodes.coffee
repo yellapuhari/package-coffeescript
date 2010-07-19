@@ -47,7 +47,7 @@ exports.BaseNode: class BaseNode
       del @options, 'chainRoot' unless this instanceof AccessorNode or this instanceof IndexNode
     top:      if @topSensitive() then @options.top else del @options, 'top'
     closure:  @isStatement() and not @isPureStatement() and not top and
-              not @options.asStatement and
+              not @options.asStatement and not (this instanceof CommentNode) and
               not @containsPureStatement()
     if closure then @compileClosure(@options) else @compileNode(@options)
 
@@ -111,9 +111,10 @@ exports.BaseNode: class BaseNode
 
   # `toString` representation of the node, for inspecting the parse tree.
   # This is what `coffee --nodes` prints out.
-  toString: (idt) ->
+  toString: (idt, override) ->
     idt: or ''
-    '\n' + idt + @class + (child.toString(idt + TAB) for child in @collectChildren()).join('')
+    children: (child.toString idt + TAB for child in @collectChildren()).join('')
+    '\n' + idt + (override or @class) + children
 
   eachChild: (func) ->
     return unless @children
@@ -136,9 +137,9 @@ exports.BaseNode: class BaseNode
   class:     'BaseNode'
   children: []
 
-  unwrap:            -> this
+  unwrap:           -> this
   isStatement:      -> no
-  isPureStatement: -> no
+  isPureStatement:  -> no
   topSensitive:     -> no
 
 #### Expressions
@@ -179,6 +180,7 @@ exports.Expressions: class Expressions extends BaseNode
   makeReturn: ->
     idx:  @expressions.length - 1
     last: @expressions[idx]
+    last: @expressions[idx: - 1] if last instanceof CommentNode
     return this if not last or last instanceof ReturnNode
     @expressions[idx]: last.makeReturn()
     this
@@ -198,7 +200,7 @@ exports.Expressions: class Expressions extends BaseNode
   compileRoot: (o) ->
     o.indent: @tab: if o.noWrap then '' else TAB
     o.scope: new Scope(null, this, null)
-    code: if o.globals then @compileNode(o) else @compileWithDeclarations(o)
+    code: @compileWithDeclarations(o)
     code: code.replace(TRAILING_WHITESPACE, '')
     code: code.replace(DOUBLE_PARENS, '($1)')
     if o.noWrap then code else "(function(){\n$code\n})();\n"
@@ -208,7 +210,7 @@ exports.Expressions: class Expressions extends BaseNode
   compileWithDeclarations: (o) ->
     code: @compileNode(o)
     code: "${@tab}var ${o.scope.compiledAssignments()};\n$code"  if o.scope.hasAssignments(this)
-    code: "${@tab}var ${o.scope.compiledDeclarations()};\n$code" if o.scope.hasDeclarations(this)
+    code: "${@tab}var ${o.scope.compiledDeclarations()};\n$code" if not o.globals and o.scope.hasDeclarations(this)
     code
 
   # Compiles a single expression within the expressions body. If we need to
@@ -265,16 +267,15 @@ exports.ReturnNode: class ReturnNode extends BaseNode
   constructor: (expression) ->
     @expression: expression
 
-  topSensitive: ->
-    true
-
   makeReturn: ->
     this
 
-  compileNode: (o) ->
+  compile: (o) ->
     expr: @expression.makeReturn()
-    return expr.compile(o) unless expr instanceof ReturnNode
-    del o, 'top'
+    return expr.compile o unless expr instanceof ReturnNode
+    super o
+
+  compileNode: (o) ->
     o.asStatement: true if @expression.isStatement()
     "${@tab}return ${@expression.compile(o)};"
 
@@ -335,15 +336,19 @@ exports.ValueNode: class ValueNode extends BaseNode
     while node instanceof CallNode then node: node.variable
     node is this
 
+  # Override compile to unwrap the value when possible.
+  compile: (o) ->
+    if not o.top or @properties.length then super(o) else @base.compile(o)
+
   # We compile a value to JavaScript by compiling and joining each property.
   # Things get much more insteresting if the chain of properties has *soak*
   # operators `?.` interspersed. Then we have to take care not to accidentally
   # evaluate a anything twice when building the soak chain.
   compileNode: (o) ->
-    only:         del(o, 'onlyFirst')
-    op:           del(o, 'operation')
+    only:         del o, 'onlyFirst'
+    op:           del o, 'operation'
     props:        if only then @properties[0...@properties.length - 1] else @properties
-    o.chainRoot: or this
+    o.chainRoot:  or this
     baseline:     @base.compile o
     baseline:     "($baseline)" if @hasProperties() and (@base instanceof ObjectNode or @isNumber())
     complete:     @last: baseline
@@ -363,6 +368,25 @@ exports.ValueNode: class ValueNode extends BaseNode
         @last: part
 
     if op and @wrapped then "($complete)" else complete
+
+#### CommentNode
+
+# CoffeeScript passes through block comments as JavaScript block comments
+# at the same position.
+exports.CommentNode: class CommentNode extends BaseNode
+
+  class: 'CommentNode'
+  isStatement: -> yes
+
+  constructor: (lines) ->
+    @lines: lines
+
+  makeReturn: ->
+    this
+
+  compileNode: (o) ->
+    sep: "\n$@tab"
+    "$@tab/*$sep${ @lines.join(sep) }\n$@tab*/"
 
 #### CallNode
 
@@ -504,7 +528,7 @@ exports.RangeNode: class RangeNode extends BaseNode
     parts: []
     parts.push @from.compile o if @from isnt @fromVar
     parts.push @to.compile o if @to isnt @toVar
-    if parts.length then "${parts.join('; ')};\n$o.indent" else ''
+    if parts.length then "${parts.join('; ')};" else ''
 
   # When compiled normally, the range returns the contents of the *for loop*
   # needed to iterate over the values in the range. Used by comprehensions.
@@ -525,11 +549,13 @@ exports.RangeNode: class RangeNode extends BaseNode
     equals: if @exclusive then '' else '='
     from:   @fromVar.compile o
     to:     @toVar.compile o
+    result: o.scope.freeVariable()
+    i:      o.scope.freeVariable()
     clause: "$from <= $to ?"
-    pre:    "\n${idt}a = [];${vars}"
-    body:   "var i = $from; ($clause i <$equals $to : i >$equals $to); ($clause i += 1 : i -= 1)"
-    post:   "a.push(i);\n${idt}return a;\n$o.indent"
-    "(function(){${pre}for ($body) $post}).call(this)"
+    pre:    "\n${idt}${result} = []; ${vars}"
+    body:   "var $i = $from; $clause $i <$equals $to : $i >$equals $to; $clause $i += 1 : $i -= 1"
+    post:   "{ ${result}.push($i) };\n${idt}return $result;\n$o.indent"
+    "(function(){${pre}\n${idt}for ($body)$post}).call(this)"
 
 #### SliceNode
 
@@ -563,11 +589,15 @@ exports.ObjectNode: class ObjectNode extends BaseNode
 
   compileNode: (o) ->
     o.indent: @idt 1
-    last: @properties.length - 1
+    nonComments: prop for prop in @properties when not (prop instanceof CommentNode)
+    lastNoncom:  nonComments[nonComments.length - 1]
     props: for prop, i in @properties
-      join:   if i is last then '' else ',\n'
-      prop:   new AssignNode prop, prop, 'object' unless prop instanceof AssignNode
-      @idt(1) + prop.compile(o) + join
+      join:   ",\n"
+      join:   "\n" if (prop is lastNoncom) or (prop instanceof CommentNode)
+      join:   '' if i is @properties.length - 1
+      indent: if prop instanceof CommentNode then '' else @idt 1
+      prop:   new AssignNode prop, prop, 'object' unless prop instanceof AssignNode or prop instanceof CommentNode
+      indent + prop.compile(o) + join
     props: props.join('')
     inner: if props then '\n' + props + '\n' + @idt() else ''
     "{$inner}"
@@ -592,6 +622,8 @@ exports.ArrayNode: class ArrayNode extends BaseNode
       code: obj.compile(o)
       if obj instanceof SplatNode
         return @compileSplatLiteral @objects, o
+      else if obj instanceof CommentNode
+        objects.push "\n$code\n$o.indent"
       else if i is @objects.length - 1
         objects.push code
       else
@@ -628,7 +660,7 @@ exports.ClassNode: class ClassNode extends BaseNode
   # constructor, property assignments, and inheritance getting built out below.
   compileNode: (o) ->
     extension:  @parent and new ExtendsNode(@variable, @parent)
-    props:      new Expressions()
+    props:      new Expressions
     o.top:      true
     me:         null
     className:  @variable.compile o
@@ -640,11 +672,12 @@ exports.ClassNode: class ClassNode extends BaseNode
         new CallNode(applied, [literal('this'), literal('arguments')])
       ]))
     else
-      constructor: new CodeNode()
+      constructor: new CodeNode
 
     for prop in @properties
       [pvar, func]: [prop.variable, prop.value]
       if pvar and pvar.base.value is 'constructor' and func instanceof CodeNode
+        throw new Error "cannot define a constructor as a bound function." if func.bound
         func.name: className
         func.body.push new ReturnNode literal 'this'
         @variable: new ValueNode @variable
@@ -785,7 +818,7 @@ exports.CodeNode: class CodeNode extends BaseNode
 
   constructor: (params, body, tag) ->
     @params:  params or []
-    @body:    body or new Expressions()
+    @body:    body or new Expressions
     @bound:   tag is 'boundfunc'
 
   # Compilation creates a new scope unless explicitly asked to share with the
@@ -982,6 +1015,9 @@ exports.OpNode: class OpNode extends BaseNode
   isChainable: ->
     indexOf(@CHAINABLE, @operator) >= 0
 
+  toString: (idt) ->
+    super(idt, @class + ' ' + @operator)
+
   compileNode: (o) ->
     o.operation: true
     return @compileChain(o)      if @isChainable() and @first.unwrap() instanceof OpNode and @first.unwrap().isChainable()
@@ -1050,7 +1086,7 @@ exports.InNode: class InNode extends BaseNode
     [@arr1, @arr2]: @array.compileReference o, {precompile: yes}
     [i, l]: [o.scope.freeVariable(), o.scope.freeVariable()]
     prefix: if @obj1 isnt @obj2 then @obj1 + '; ' else ''
-    "!!(function(){ ${prefix}for (var $i=0, $l=${@arr1}.length; $i<$l; $i++) if (${@arr2}[$i] === $@obj2) return true; })()"
+    "!!(function(){ ${prefix}for (var $i=0, $l=${@arr1}.length; $i<$l; $i++) if (${@arr2}[$i] === $@obj2) return true; }).call(this)"
 
 #### TryNode
 
@@ -1146,9 +1182,14 @@ exports.ParentheticalNode: class ParentheticalNode extends BaseNode
   makeReturn: ->
     @expression.makeReturn()
 
+  topSensitive: ->
+    yes
+
   compileNode: (o) ->
+    top:  del o, 'top'
     code: @expression.compile(o)
-    return code if @isStatement()
+    if @isStatement()
+      return (if top then "$@tab$code;" else code)
     l:    code.length
     code: code.substr(o, l-1) if code.substr(l-1, 1) is ';'
     if @expression instanceof AssignNode then code else "($code)"
@@ -1212,13 +1253,14 @@ exports.ForNode: class ForNode extends BaseNode
     varPart:        ''
     body:           Expressions.wrap([@body])
     if range
-      sourcePart:   source.compileVariables o
+      sourcePart:   source.compileVariables(o)
+      sourcePart:   + "\n$o.indent" if sourcePart
       forPart:      source.compile merge o, {index: ivar, step: @step}
     else
       svar:         scope.freeVariable()
       sourcePart:   "$svar = ${ @source.compile(o) };"
       if @pattern
-        namePart:   new AssignNode(@name, literal("$svar[$ivar]")).compile(merge o, {indent: @idt(1), top: true}) + "\n"
+        namePart:   new AssignNode(@name, literal("$svar[$ivar]")).compile(merge o, {indent: @idt(1), top: true}) + '\n'
       else
         namePart:   "$name = $svar[$ivar]" if name
       unless @object
@@ -1237,7 +1279,7 @@ exports.ForNode: class ForNode extends BaseNode
       body.unshift  literal "var $index = $ivar" if index
       body:         ClosureNode.wrap(body, true)
     else
-      varPart:      "${@idt(1)}$namePart;\n" if namePart
+      varPart:      (namePart or '') and (if @pattern then namePart else "${@idt(1)}$namePart;\n")
     if @object
       forPart:      "$ivar in $svar) { if (${utility('hasProp')}.call($svar, $ivar)"
     body:           body.compile(merge(o, {indent: @idt(1), top: true}))
@@ -1260,10 +1302,10 @@ exports.IfNode: class IfNode extends BaseNode
   constructor: (condition, body, tags) ->
     @condition: condition
     @body:      body
-    @elseBody: null
+    @elseBody:  null
     @tags:      tags or {}
     @condition: new OpNode('!', new ParentheticalNode(@condition)) if @tags.invert
-    @isChain:  false
+    @isChain:   false
 
   bodyNode: -> @body?.unwrap()
   elseBodyNode: -> @elseBody?.unwrap()
@@ -1315,9 +1357,12 @@ exports.IfNode: class IfNode extends BaseNode
     if @isStatement() then @compileStatement(o) else @compileTernary(o)
 
   makeReturn: ->
-    @body:      and @ensureExpressions(@body.makeReturn())
-    @elseBody:  and @ensureExpressions(@elseBody.makeReturn())
-    this
+    if @isStatement()
+      @body:      and @ensureExpressions(@body.makeReturn())
+      @elseBody:  and @ensureExpressions(@elseBody.makeReturn())
+      this
+    else
+      new ReturnNode this
 
   ensureExpressions: (node) ->
     if node instanceof Expressions then node else new Expressions [node]
@@ -1379,8 +1424,11 @@ ClosureNode: exports.ClosureNode: {
     return expressions if expressions.containsPureStatement()
     func: new ParentheticalNode(new CodeNode([], Expressions.wrap([expressions])))
     args: []
-    mentionsArgs: expressions.contains (n) -> (n instanceof LiteralNode) and (n.value is 'arguments')
-    mentionsThis: expressions.contains (n) -> (n instanceof LiteralNode) and (n.value is 'this')
+    mentionsArgs: expressions.contains (n) ->
+      n instanceof LiteralNode and (n.value is 'arguments')
+    mentionsThis: expressions.contains (n) ->
+      (n instanceof LiteralNode and (n.value is 'this')) or
+      (n instanceof CodeNode and n.bound)
     if mentionsArgs or mentionsThis
       meth: literal(if mentionsArgs then 'apply' else 'call')
       args: [literal('this')]

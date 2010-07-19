@@ -115,7 +115,7 @@ alert reverse '.eeffoC yrT'</textarea></div>
 
     <p>
       <b>Latest Version:</b>
-      <a href="http://github.com/jashkenas/coffee-script/tarball/0.7.0">0.7.0</a>
+      <a href="http://github.com/jashkenas/coffee-script/tarball/0.7.2">0.7.2</a>
     </p>
 
     <h2>
@@ -260,7 +260,7 @@ cubes = (function() {
       Then clone the CoffeeScript
       <a href="http://github.com/jashkenas/coffee-script">source repository</a>
       from GitHub, or download the latest
-      release: <a href="http://github.com/jashkenas/coffee-script/tarball/0.7.0">0.7.0</a>.
+      release: <a href="http://github.com/jashkenas/coffee-script/tarball/0.7.2">0.7.2</a>.
       To install the CoffeeScript compiler system-wide
       under <tt>/usr/local</tt>, open the directory and run:
     </p>
@@ -269,7 +269,16 @@ cubes = (function() {
 sudo bin/cake install</pre>
 
     <p>
-      This provides the <tt>coffee</tt> command, which will execute CoffeeScripts
+      Alternatively, if you already have the 
+      <a href="http://npmjs.org/">Node Package Manager</a> installed,
+      you can use that to grab the latest CoffeeScript:
+    </p>
+    
+    <pre>
+sudo npm install coffee-script</pre>
+
+    <p>
+      Both of these provide the <tt>coffee</tt> command, which will execute CoffeeScripts
       under Node.js by default, but is also used to compile CoffeeScript
       <tt>.coffee</tt> files into JavaScript, or to run an an interactive REPL.
       When compiling to JavaScript, <tt>coffee</tt> writes the output
@@ -430,8 +439,7 @@ coffee --print app/scripts/*.coffee > concatenation.js</pre>
       <span id="functions" class="bookmark"></span>
       <b class="header">Functions and Invocation</b>
       Functions are defined by a list of parameters, an arrow, and the
-      function body. The empty function looks like this: <tt>-></tt> All
-      functions in CoffeeScript are named by default, for easier debugging.
+      function body. The empty function looks like this: <tt>-></tt>
     </p>
     <div class='code'><pre class="idle"><span class="FunctionName">square</span><span class="Keyword">:</span> <span class="FunctionArgument">(</span><span class="FunctionArgument">x</span><span class="FunctionArgument">)</span> <span class="Storage">-&gt;</span> x <span class="Keyword">*</span> x
 <span class="FunctionName">cube</span><span class="Keyword">:</span>   <span class="FunctionArgument">(</span><span class="FunctionArgument">x</span><span class="FunctionArgument">)</span> <span class="Storage">-&gt;</span> square(x) <span class="Keyword">*</span> x
@@ -1796,6 +1804,10 @@ html <span class="Keyword">=</span> <span class="String"><span class="String">'<
         &mdash; which adds Vim syntax highlighting and indentation support.
       </li>
       <li>
+        <b>wavded</b>'s <a href="http://github.com/wavded/gedit-coffeescript">gedit-coffeescript</a>
+        &mdash; a CoffeeScript syntax highlighter for the gedit text editor.
+      </li>
+      <li>
         <b>yeungda</b>'s <a href="http://yeungda.github.com/coffeescript-idea/">coffeescript-idea</a>
         &mdash; a plugin for IntelliJ IDEA and RubyMine providing syntax highlighting.
       </li>
@@ -1808,6 +1820,11 @@ html <span class="Keyword">=</span> <span class="String"><span class="String">'<
         <b>jnicklas</b>'s <a href="http://github.com/jnicklas/bistro_car">BistroCar</a>
         &mdash; a plugin that serves and bundles CoffeeScript from within your
         Rails application.
+      </li>
+      <li>
+        <b>dsc</b>'s <a href="http://github.com/dsc/coffeecup">CoffeeCup</a>
+        &mdash; A Python WSGI middleware that compiles CoffeeScript to JavaScript
+        on-demand during development.
       </li>
       <li>
         <b>sutto</b>'s <a href="http://github.com/Sutto/barista">Barista</a>
@@ -1847,13 +1864,21 @@ html <span class="Keyword">=</span> <span class="String"><span class="String">'<
     </h2>
     
     <p>
+      <b class="header" style="margin-top: 20px;">0.7.1</b>
+      Block-style comments are now passed through and printed as JavaScript block
+      comments -- making them useful for licenses and copyright headers. Better
+      support for running coffee scripts standalone via hashbangs.
+      Improved syntax errors for tokens that are not in the grammar.
+    </p>
+    
+    <p>
       <b class="header" style="margin-top: 20px;">0.7.0</b>
       Official CoffeeScript variable style is now camelCase, as in JavaScript.
       Reserved words are now allowed as object keys, and will be quoted for you.
       Range comprehensions now generate cleaner code, but you have to specify <tt>by -1</tt>
       if you'd like to iterate downward. Reporting of syntax errors is greatly 
       improved from the previous release. Running <tt>coffee</tt> with no arguments
-      now launches the REPL, with Readline support. The <tt>&amp;-</tt> bind operator
+      now launches the REPL, with Readline support. The <tt>&lt;-</tt> bind operator
       has been removed from CoffeeScript. The <tt>loop</tt> keyword was added,
       which is equivalent to a <tt>while true</tt> loop. Comprehensions that contain
       closures will now close over their variables, like the semantics of a <tt>forEach</tt>.
