@@ -53,8 +53,8 @@ grammar: {
   # The **Root** is the top-level node in the syntax tree. Since we parse bottom-up,
   # all parsing must end here.
   Root: [
-    o "",                                       -> new Expressions()
-    o "TERMINATOR",                             -> new Expressions()
+    o "",                                       -> new Expressions
+    o "TERMINATOR",                             -> new Expressions
     o "Body"
     o "Block TERMINATOR"
   ]
@@ -99,6 +99,7 @@ grammar: {
     o "Class"
     o "Splat"
     o "Existence"
+    o "Comment"
   ]
 
   # A an indented block of expressions. Note that the [Rewriter](rewriter.html)
@@ -106,7 +107,8 @@ grammar: {
   # token stream.
   Block: [
     o "INDENT Body OUTDENT",                    -> $2
-    o "INDENT OUTDENT",                         -> new Expressions()
+    o "INDENT OUTDENT",                         -> new Expressions
+    o "TERMINATOR Comment",                     -> Expressions.wrap [$2]
   ]
 
   # A literal identifier, a variable name or property.
@@ -147,12 +149,18 @@ grammar: {
     o "AlphaNumeric"
     o "Identifier ASSIGN Expression",           -> new AssignNode new ValueNode($1), $3, 'object'
     o "AlphaNumeric ASSIGN Expression",         -> new AssignNode new ValueNode($1), $3, 'object'
+    o "Comment"
   ]
 
   # A return statement from a function body.
   Return: [
     o "RETURN Expression",                      -> new ReturnNode $2
     o "RETURN",                                 -> new ReturnNode new ValueNode new LiteralNode 'null'
+  ]
+
+  # A block comment.
+  Comment: [
+    o "HERECOMMENT",                            -> new CommentNode $1
   ]
 
   # [The existential operator](http://jashkenas.github.com/coffee-script/#existence).
@@ -285,8 +293,9 @@ grammar: {
   # and calling `super()`
   Call: [
     o "Invocation"
-    o "NEW Invocation",                         -> $2.newInstance()
     o "Super"
+    o "NEW Invocation",                         -> $2.newInstance()
+    o "NEW Value",                              -> (new CallNode($2, [])).newInstance()
   ]
 
   # Extending an object by setting its prototype chain to reference a parent
@@ -529,7 +538,7 @@ grammar: {
 
     o "Expression && Expression",               -> new OpNode '&&', $1, $3
     o "Expression || Expression",               -> new OpNode '||', $1, $3
-    o "Expression ? Expression",                -> new OpNode '?', $1, $3
+    o "Expression OP? Expression",              -> new OpNode '?', $1, $3
 
     o "Expression -= Expression",               -> new OpNode '-=', $1, $3
     o "Expression += Expression",               -> new OpNode '+=', $1, $3
@@ -570,7 +579,7 @@ operators: [
   ["left",      '<=', '<', '>', '>=']
   ["right",     'DELETE', 'INSTANCEOF', 'TYPEOF']
   ["left",      '==', '!=']
-  ["left",      '&&', '||']
+  ["left",      '&&', '||', 'OP?']
   ["right",     '-=', '+=', '/=', '*=', '%=', '||=', '&&=', '?=']
   ["left",      '.']
   ["right",     'INDENT']

@@ -26,6 +26,7 @@ exports.Rewriter: class Rewriter
   # corrected before implicit parentheses can be wrapped around blocks of code.
   rewrite: (tokens) ->
     @tokens: tokens
+    @adjustComments()
     @removeLeadingNewlines()
     @removeMidExpressionNewlines()
     @closeOpenCallsAndIndexes()
@@ -47,6 +48,27 @@ exports.Rewriter: class Rewriter
       move: block @tokens[i - 1], @tokens[i], @tokens[i + 1], i
       i: + move
     true
+
+  # Massage newlines and indentations so that comments don't have to be
+  # correctly indented, or appear on a line of their own.
+  adjustComments: ->
+    @scanTokens (prev, token, post, i) =>
+      return 1 unless token[0] is 'HERECOMMENT'
+      [before, after]: [@tokens[i - 2], @tokens[i + 2]]
+      if after and after[0] is 'INDENT'
+        @tokens.splice i + 2, 1
+        if before and before[0] is 'OUTDENT' and post and prev[0] is post[0] is 'TERMINATOR'
+          @tokens.splice i - 2, 1
+        else
+          @tokens.splice i, 0, after
+      else if prev and prev[0] not in ['TERMINATOR', 'INDENT', 'OUTDENT']
+        if post and post[0] is 'TERMINATOR' and after and after[0] is 'OUTDENT'
+          @tokens.splice(i + 3, 0, @tokens.splice(i, 2)...)
+          @tokens.splice(i + 3, 0, ['TERMINATOR', "\n", prev[2]])
+        else
+          @tokens.splice i, 0, ['TERMINATOR', "\n", prev[2]]
+        return 2
+      return 1
 
   # Leading newlines would introduce an ambiguity in the grammar, so we
   # dispatch them here.
@@ -115,7 +137,7 @@ exports.Rewriter: class Rewriter
           return size
         stack.push 0
         return 1
-      if open and !token.generated and (!post or include(IMPLICIT_END, tag))
+      if open and !token.generated and prev[0] isnt ',' and (!post or include(IMPLICIT_END, tag))
         j: 1; j++ while (nx: @tokens[i + j])? and include(IMPLICIT_END, nx[0])
         if nx? and nx[0] is ','
           @tokens.splice(i, 1) if tag is 'TERMINATOR'
@@ -135,14 +157,17 @@ exports.Rewriter: class Rewriter
   addImplicitIndentation: ->
     @scanTokens (prev, token, post, i) =>
       if token[0] is 'ELSE' and prev[0] isnt 'OUTDENT'
-        @tokens.splice i, 0, ['INDENT', 2, token[2]], ['OUTDENT', 2, token[2]]
+        @tokens.splice i, 0, @indentation(token)...
         return 2
+      if token[0] is 'CATCH' and @tokens[i + 2][0] is 'TERMINATOR'
+        @tokens.splice i + 2, 0, @indentation(token)...
+        return 4
       return 1 unless include(SINGLE_LINERS, token[0]) and
         post[0] isnt 'INDENT' and
         not (token[0] is 'ELSE' and post[0] is 'IF')
       starter: token[0]
-      indent: ['INDENT', 2, token[2]]
-      indent.generated: true
+      [indent, outdent]: @indentation token
+      indent.generated: outdent.generated: true
       @tokens.splice i + 1, 0, indent
       idx: i + 1
       parens: 0
@@ -155,8 +180,6 @@ exports.Rewriter: class Rewriter
             (tok[0] is ')' and parens is 0)) and
             not (tok[0] is 'ELSE' and starter not in ['IF', 'THEN'])
           insertion: if pre[0] is "," then idx - 1 else idx
-          outdent: ['OUTDENT', 2, token[2]]
-          outdent.generated: true
           @tokens.splice insertion, 0, outdent
           break
         parens: + 1 if tok[0] is '('
@@ -232,6 +255,10 @@ exports.Rewriter: class Rewriter
           return 1
       else
         return 1
+
+  # Generate the indentation tokens, based on another token on the same line.
+  indentation: (token) ->
+    [['INDENT', 2, token[2]], ['OUTDENT', 2, token[2]]]
 
 # Constants
 # ---------

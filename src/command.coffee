@@ -49,14 +49,17 @@ exports.run: ->
   return usage()                              if options.help
   return version()                            if options.version
   return require './repl'                     if options.interactive
-  return compileStdio()                      if options.stdio
-  return compileScript 'console', sources[0] if options.eval
+  return compileStdio()                       if options.stdio
+  return compileScript 'console', sources[0]  if options.eval
   return require './repl'                     unless sources.length
   separator: sources.indexOf '--'
   flags: []
   if separator >= 0
-    flags: sources[(separator + 1)...sources.length]
+    flags:   sources[(separator + 1)...sources.length]
     sources: sources[0...separator]
+  if options.run
+    flags:   sources[1..sources.length].concat flags
+    sources: [sources[0]]
   process.ARGV: process.argv: flags
   compileScripts()
 
@@ -151,11 +154,11 @@ printTokens: (tokens) ->
 # Use the [OptionParser module](optparse.html) to extract all options from
 # `process.argv` that are specified in `SWITCHES`.
 parseOptions: ->
-  optionParser: new optparse.OptionParser SWITCHES, BANNER
-  o: options:    optionParser.parse(process.argv)
+  optionParser:  new optparse.OptionParser SWITCHES, BANNER
+  o: options:    optionParser.parse(process.argv[2...process.argv.length])
   options.run:   not (o.compile or o.print or o.lint)
   options.print: !!  (o.print or (o.eval or o.stdio and o.compile))
-  sources:       options.arguments[2...options.arguments.length]
+  sources:       options.arguments
 
 # The compile-time options to pass to the CoffeeScript compiler.
 compileOptions: (source) ->

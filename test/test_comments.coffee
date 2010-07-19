@@ -1,3 +1,10 @@
+# comment before a ...
+
+###
+... block comment.
+###
+
+
   # comment
 func: ->
 # comment
@@ -66,6 +73,38 @@ func: ->
   ###
   code
 
+func: ->
+  one: ->
+    two: ->
+      three: ->
+  ###
+  block.
+  ###
+  four: ->
+
+fn1: ->
+  oneLevel: null
+###
+This isn't fine.
+###
+
+ok ok
+
+obj: {
+  a: 'b'
+  ###
+  comment
+  ###
+  c: 'd'
+}
+
+arr: [
+  1, 2, 3,
+  ###
+  four
+  ###
+  5, 6, 7
+]
 
 # Spaced comments in if / elses.
 result: if false
