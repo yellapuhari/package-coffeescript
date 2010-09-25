@@ -1,4 +1,2 @@
-(function(){
-  var _a;
-  typeof (_a = (lottery.drawWinner())) === "undefined" || _a == undefined ? undefined : _a.address == undefined ? undefined : _a.address.zipcode;
-})();
+var _ref, _ref2;
+(typeof (_ref2 = ((_ref = lottery.drawWinner()))) === "undefined" || _ref2 === null) ? undefined : _ref2.address == null ? undefined : _ref2.address.zipcode;

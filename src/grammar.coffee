@@ -15,7 +15,7 @@
 # from our rules and saves it into `lib/parser.js`.
 
 # The only dependency is on the **Jison.Parser**.
-Parser: require('jison').Parser
+Parser = require('jison').Parser
 
 # Jison DSL
 # ---------
@@ -23,17 +23,18 @@ Parser: require('jison').Parser
 # Since we're going to be wrapped in a function by Jison in any case, if our
 # action immediately returns a value, we can optimize by removing the function
 # wrapper and just returning the value directly.
-unwrap: /function\s*\(\)\s*\{\s*return\s*([\s\S]*);\s*\}/
+unwrap = /function\s*\(\)\s*\{\s*return\s*([\s\S]*);\s*\}/
 
 # Our handy DSL for Jison grammar generation, thanks to
 # [Tim Caswell](http://github.com/creationix). For every rule in the grammar,
 # we pass the pattern-defining string, the action to run, and extra options,
 # optionally. If no action is specified, we simply pass the value of the
 # previous nonterminal.
-o: (patternString, action, options) ->
+o = (patternString, action, options) ->
   return [patternString, '$$ = $1;', options] unless action
-  action: if match: (action + '').match(unwrap) then match[1] else "($action())"
-  [patternString, "$$ = $action;", options]
+  action = if match = (action + '').match(unwrap) then match[1] else "(#{action}())"
+  action = action.replace /\b(?:[A-Z][a-z]+Node|Expressions)\b/g, 'yy.$&'
+  [patternString, "$$ = #{action};", options]
 
 # Grammatical Rules
 # -----------------
@@ -48,7 +49,7 @@ o: (patternString, action, options) ->
 # `$1` would be the value of the first `Expression`, `$2` would be the token
 # for the `UNLESS` terminal, and `$3` would be the value of the second
 # `Expression`.
-grammar: {
+grammar =
 
   # The **Root** is the top-level node in the syntax tree. Since we parse bottom-up,
   # all parsing must end here.
@@ -78,6 +79,7 @@ grammar: {
     o "Throw"
     o "BREAK",                                  -> new LiteralNode $1
     o "CONTINUE",                               -> new LiteralNode $1
+    o "DEBUGGER",                               -> new LiteralNode $1
   ]
 
   # All the different types of expressions in our language. The basic unit of
@@ -97,12 +99,11 @@ grammar: {
     o "Switch"
     o "Extends"
     o "Class"
-    o "Splat"
     o "Existence"
     o "Comment"
   ]
 
-  # A an indented block of expressions. Note that the [Rewriter](rewriter.html)
+  # An indented block of expressions. Note that the [Rewriter](rewriter.html)
   # will convert some postfix forms into blocks for us, by adjusting the
   # token stream.
   Block: [
@@ -139,7 +140,8 @@ grammar: {
 
   # Assignment of a variable, property, or index to a value.
   Assign: [
-    o "Assignable ASSIGN Expression",           -> new AssignNode $1, $3
+    o "Assignable = Expression",                -> new AssignNode $1, $3
+    o "Assignable = INDENT Expression OUTDENT", -> new AssignNode $1, $4
   ]
 
   # Assignment when it happens within an object literal. The difference from
@@ -147,8 +149,10 @@ grammar: {
   AssignObj: [
     o "Identifier",                             -> new ValueNode $1
     o "AlphaNumeric"
-    o "Identifier ASSIGN Expression",           -> new AssignNode new ValueNode($1), $3, 'object'
-    o "AlphaNumeric ASSIGN Expression",         -> new AssignNode new ValueNode($1), $3, 'object'
+    o "Identifier : Expression",                -> new AssignNode new ValueNode($1), $3, 'object'
+    o "AlphaNumeric : Expression",              -> new AssignNode new ValueNode($1), $3, 'object'
+    o "Identifier : INDENT Expression OUTDENT", -> new AssignNode new ValueNode($1), $4, 'object'
+    o "AlphaNumeric : INDENT Expression OUTDENT", -> new AssignNode new ValueNode($1), $4, 'object'
     o "Comment"
   ]
 
@@ -200,7 +204,9 @@ grammar: {
   # that hoovers up the remaining arguments.
   Param: [
     o "PARAM",                                  -> new LiteralNode $1
-    o "Param . . .",                            -> new SplatNode $1
+    o "@ PARAM",                                -> new ParamNode $2, true
+    o "PARAM . . .",                            -> new ParamNode $1, false, true
+    o "@ PARAM . . .",                          -> new ParamNode $2, true, true
   ]
 
   # A splat that occurs outside of a parameter list.
@@ -248,8 +254,8 @@ grammar: {
   # Indexing into an object or array using bracket notation.
   Index: [
     o "INDEX_START Expression INDEX_END",       -> new IndexNode $2
-    o "INDEX_SOAK Index",                       -> $2.soakNode: yes; $2
-    o "INDEX_PROTO Index",                      -> $2.proto: yes; $2
+    o "INDEX_SOAK Index",                       -> $2.soakNode = yes; $2
+    o "INDEX_PROTO Index",                      -> $2.proto = yes; $2
   ]
 
   # In CoffeeScript, an object literal is simply a list of assignments.
@@ -274,12 +280,14 @@ grammar: {
     o "CLASS SimpleAssignable EXTENDS Value",   -> new ClassNode $2, $4
     o "CLASS SimpleAssignable INDENT ClassBody OUTDENT", -> new ClassNode $2, null, $4
     o "CLASS SimpleAssignable EXTENDS Value INDENT ClassBody OUTDENT", -> new ClassNode $2, $4, $6
+    o "CLASS INDENT ClassBody OUTDENT",         -> new ClassNode '__temp__', null, $3
   ]
 
   # Assignments that can happen directly inside a class declaration.
   ClassAssign: [
     o "AssignObj",                              -> $1
-    o "ThisProperty ASSIGN Expression",         -> new AssignNode new ValueNode($1), $3, 'this'
+    o "ThisProperty : Expression",              -> new AssignNode new ValueNode($1), $3, 'this'
+    o "ThisProperty : INDENT Expression OUTDENT", -> new AssignNode new ValueNode($1), $4, 'this'
   ]
 
   # A list of assignments to a class.
@@ -287,13 +295,12 @@ grammar: {
     o "",                                       -> []
     o "ClassAssign",                            -> [$1]
     o "ClassBody TERMINATOR ClassAssign",       -> $1.concat $3
+    o "{ ClassBody }",                          -> $2
   ]
 
-  # The three flavors of function call: normal, object instantiation with `new`,
-  # and calling `super()`
+  # The two flavors of function call: normal, and object instantiation with `new`.
   Call: [
     o "Invocation"
-    o "Super"
     o "NEW Invocation",                         -> $2.newInstance()
     o "NEW Value",                              -> (new CallNode($2, [])).newInstance()
   ]
@@ -306,24 +313,33 @@ grammar: {
 
   # Ordinary function invocation, or a chained series of calls.
   Invocation: [
-    o "Value Arguments",                        -> new CallNode $1, $2
-    o "Invocation Arguments",                   -> new CallNode $1, $2
+    o "Value OptFuncExist Arguments",           -> new CallNode $1, $3, $2
+    o "Invocation OptFuncExist Arguments",      -> new CallNode $1, $3, $2
+    o "SUPER",                                  -> new CallNode 'super', [new SplatNode(new LiteralNode('arguments'))]
+    o "SUPER Arguments",                        -> new CallNode 'super', $2
+  ]
+
+  # An optional existence check on a function.
+  OptFuncExist: [
+    o "",                                       -> no
+    o "FUNC_EXIST",                             -> yes
   ]
 
   # The list of arguments to a function call.
   Arguments: [
+    o "CALL_START CALL_END",                    -> []
     o "CALL_START ArgList OptComma CALL_END",   -> $2
-  ]
-
-  # Calling super.
-  Super: [
-    o "SUPER Arguments",                        -> new CallNode 'super', $2
   ]
 
   # A reference to the *this* current object.
   This: [
     o "THIS",                                   -> new ValueNode new LiteralNode 'this'
     o "@",                                      -> new ValueNode new LiteralNode 'this'
+  ]
+
+  RangeDots: [
+    o ". .",                                    -> 'inclusive'
+    o ". . .",                                  -> 'exclusive'
   ]
 
   # A reference to a property on *this*.
@@ -333,18 +349,19 @@ grammar: {
 
   # The CoffeeScript range literal.
   Range: [
-    o "[ Expression . . Expression ]",          -> new RangeNode $2, $5
-    o "[ Expression . . . Expression ]",        -> new RangeNode $2, $6, true
+    o "[ Expression RangeDots Expression ]",    -> new RangeNode $2, $4, $3
   ]
 
   # The slice literal.
   Slice: [
-    o "INDEX_START Expression . . Expression INDEX_END", -> new RangeNode $2, $5
-    o "INDEX_START Expression . . . Expression INDEX_END", -> new RangeNode $2, $6, true
+    o "INDEX_START Expression RangeDots Expression INDEX_END", -> new RangeNode $2, $4, $3
+    o "INDEX_START Expression RangeDots INDEX_END", -> new RangeNode $2, null, $3
+    o "INDEX_START RangeDots Expression INDEX_END", -> new RangeNode null, $3, $2
   ]
 
   # The array literal.
   Array: [
+    o "[ ]",                                    -> new ArrayNode []
     o "[ ArgList OptComma ]",                   -> new ArrayNode $2
   ]
 
@@ -352,11 +369,17 @@ grammar: {
   # as well as the contents of an array literal
   # (i.e. comma-separated expressions). Newlines work as well.
   ArgList: [
-    o "",                                       -> []
-    o "Expression",                             -> [$1]
-    o "ArgList , Expression",                   -> $1.concat [$3]
-    o "ArgList OptComma TERMINATOR Expression", -> $1.concat [$4]
+    o "Arg",                                    -> [$1]
+    o "ArgList , Arg",                          -> $1.concat [$3]
+    o "ArgList OptComma TERMINATOR Arg",        -> $1.concat [$4]
+    o "INDENT ArgList OptComma OUTDENT",        -> $2
     o "ArgList OptComma INDENT ArgList OptComma OUTDENT", -> $1.concat $4
+  ]
+
+  # Valid arguments are Expressions or Splats.
+  Arg: [
+    o "Expression"
+    o "Splat"
   ]
 
   # Just simple, comma-separated, required arguments (no fancy syntax). We need
@@ -391,14 +414,15 @@ grammar: {
   # the trick.
   Parenthetical: [
     o "( Line )",                               -> new ParentheticalNode $2
+    o "( )",                                    -> new ParentheticalNode new LiteralNode ''
   ]
 
   # The condition portion of a while loop.
   WhileSource: [
     o "WHILE Expression",                       -> new WhileNode $2
-    o "WHILE Expression WHEN Expression",       -> new WhileNode $2, {guard : $4}
-    o "UNTIL Expression",                       -> new WhileNode $2, {invert: true}
-    o "UNTIL Expression WHEN Expression",       -> new WhileNode $2, {invert: true, guard: $4}
+    o "WHILE Expression WHEN Expression",       -> new WhileNode $2, guard: $4
+    o "UNTIL Expression",                       -> new WhileNode $2, invert: true
+    o "UNTIL Expression WHEN Expression",       -> new WhileNode $2, invert: true, guard: $4
   ]
 
   # The while loop can either be normal, with a block of expressions to execute,
@@ -419,9 +443,19 @@ grammar: {
   # Comprehensions can either be normal, with a block of expressions to execute,
   # or postfix, with a single expression.
   For: [
-    o "Statement FOR ForVariables ForSource",   -> new ForNode $1, $4, $3[0], $3[1]
-    o "Expression FOR ForVariables ForSource",  -> new ForNode $1, $4, $3[0], $3[1]
-    o "FOR ForVariables ForSource Block",       -> new ForNode $4, $3, $2[0], $2[1]
+    o "Statement ForBody",                      -> new ForNode $1, $2, $2.vars[0], $2.vars[1]
+    o "Expression ForBody",                     -> new ForNode $1, $2, $2.vars[0], $2.vars[1]
+    o "ForBody Block",                          -> new ForNode $2, $1, $1.vars[0], $1.vars[1]
+  ]
+
+  ForBody: [
+    o "FOR Range",                              -> source: new ValueNode($2), vars: []
+    o "ForStart ForSource",                     -> $2.raw = $1.raw; $2.vars = $1; $2
+  ]
+
+  ForStart: [
+    o "FOR ForVariables",                       -> $2
+    o "FOR ALL ForVariables",                   -> $3.raw = true; $3
   ]
 
   # An array of all accepted values for a variable inside the loop. This
@@ -444,35 +478,31 @@ grammar: {
   # clause. If it's an array comprehension, you can also choose to step through
   # in fixed-size increments.
   ForSource: [
-    o "IN Expression",                               -> {source: $2}
-    o "OF Expression",                               -> {source: $2, object: true}
-    o "IN Expression WHEN Expression",               -> {source: $2, guard: $4}
-    o "OF Expression WHEN Expression",               -> {source: $2, guard: $4, object: true}
-    o "IN Expression BY Expression",                 -> {source: $2, step:   $4}
-    o "IN Expression WHEN Expression BY Expression", -> {source: $2, guard: $4, step:   $6}
-    o "IN Expression BY Expression WHEN Expression", -> {source: $2, step:   $4, guard: $6}
+    o "IN Expression",                               -> source: $2
+    o "OF Expression",                               -> source: $2, object: true
+    o "IN Expression WHEN Expression",               -> source: $2, guard: $4
+    o "OF Expression WHEN Expression",               -> source: $2, guard: $4, object: true
+    o "IN Expression BY Expression",                 -> source: $2, step:  $4
+    o "IN Expression WHEN Expression BY Expression", -> source: $2, guard: $4, step:   $6
+    o "IN Expression BY Expression WHEN Expression", -> source: $2, step:  $4, guard: $6
   ]
 
-  # The CoffeeScript switch/when/else block replaces the JavaScript
-  # switch/case/default by compiling into an if-else chain.
   Switch: [
-    o "SWITCH Expression INDENT Whens OUTDENT", -> $4.switchesOver $2
-    o "SWITCH Expression INDENT Whens ELSE Block OUTDENT", -> $4.switchesOver($2).addElse $6, true
-    o "SWITCH INDENT Whens OUTDENT",            -> $3
-    o "SWITCH INDENT Whens ELSE Block OUTDENT", -> $3.addElse $5, true
+    o "SWITCH Expression INDENT Whens OUTDENT", -> new SwitchNode $2, $4
+    o "SWITCH Expression INDENT Whens ELSE Block OUTDENT", -> new SwitchNode $2, $4, $6
+    o "SWITCH INDENT Whens OUTDENT",            -> new SwitchNode null, $3
+    o "SWITCH INDENT Whens ELSE Block OUTDENT", -> new SwitchNode null, $3, $5
   ]
 
-  # The inner list of whens is left recursive. At code-generation time, the
-  # IfNode will rewrite them into a proper chain.
   Whens: [
     o "When"
-    o "Whens When",                             -> $1.addElse $2
+    o "Whens When",                             -> $1.concat $2
   ]
 
   # An individual **When** clause, with action.
   When: [
-    o "LEADING_WHEN SimpleArgs Block",            -> new IfNode $2, $3, {statement: true}
-    o "LEADING_WHEN SimpleArgs Block TERMINATOR", -> new IfNode $2, $3, {statement: true}
+    o "LEADING_WHEN SimpleArgs Block",            -> [[$2, $3]]
+    o "LEADING_WHEN SimpleArgs Block TERMINATOR", -> [[$2, $3]]
   ]
 
   # The most basic form of *if* is a condition and an action. The following
@@ -480,7 +510,7 @@ grammar: {
   # ambiguity.
   IfBlock: [
     o "IF Expression Block",                    -> new IfNode $2, $3
-    o "UNLESS Expression Block",                -> new IfNode $2, $3, {invert: true}
+    o "UNLESS Expression Block",                -> new IfNode $2, $3, invert: true
     o "IfBlock ELSE IF Expression Block",       -> $1.addElse (new IfNode($4, $5)).forceStatement()
     o "IfBlock ELSE Block",                     -> $1.addElse $3
   ]
@@ -489,10 +519,10 @@ grammar: {
   # *if* and *unless*.
   If: [
     o "IfBlock"
-    o "Statement IF Expression",                -> new IfNode $3, Expressions.wrap([$1]), {statement: true}
-    o "Expression IF Expression",               -> new IfNode $3, Expressions.wrap([$1]), {statement: true}
-    o "Statement UNLESS Expression",            -> new IfNode $3, Expressions.wrap([$1]), {statement: true, invert: true}
-    o "Expression UNLESS Expression",           -> new IfNode $3, Expressions.wrap([$1]), {statement: true, invert: true}
+    o "Statement POST_IF Expression",           -> new IfNode $3, Expressions.wrap([$1]), statement: true
+    o "Expression POST_IF Expression",          -> new IfNode $3, Expressions.wrap([$1]), statement: true
+    o "Statement POST_UNLESS Expression",       -> new IfNode $3, Expressions.wrap([$1]), statement: true, invert: true
+    o "Expression POST_UNLESS Expression",      -> new IfNode $3, Expressions.wrap([$1]), statement: true, invert: true
   ]
 
   # Arithmetic and logical operators, working on one or more operands.
@@ -502,61 +532,36 @@ grammar: {
   # -type rule, but in order to make the precedence binding possible, separate
   # rules are necessary.
   Operation: [
-    o "! Expression",                           -> new OpNode '!', $2
-    o "!! Expression",                          -> new OpNode '!!', $2
-    o("- Expression",                           (-> new OpNode('-', $2)), {prec: 'UMINUS'})
-    o("+ Expression",                           (-> new OpNode('+', $2)), {prec: 'UPLUS'})
-    o "~ Expression",                           -> new OpNode '~', $2
+    o "UNARY Expression",                       -> new OpNode $1, $2
+    o("- Expression",                           (-> new OpNode('-', $2)), {prec: 'UNARY'})
+    o("+ Expression",                           (-> new OpNode('+', $2)), {prec: 'UNARY'})
+
     o "-- Expression",                          -> new OpNode '--', $2
     o "++ Expression",                          -> new OpNode '++', $2
-    o "DELETE Expression",                      -> new OpNode 'delete', $2
-    o "TYPEOF Expression",                      -> new OpNode 'typeof', $2
     o "Expression --",                          -> new OpNode '--', $1, null, true
     o "Expression ++",                          -> new OpNode '++', $1, null, true
 
-    o "Expression * Expression",                -> new OpNode '*', $1, $3
-    o "Expression / Expression",                -> new OpNode '/', $1, $3
-    o "Expression % Expression",                -> new OpNode '%', $1, $3
-
+    o "Expression ? Expression",                -> new OpNode '?', $1, $3
     o "Expression + Expression",                -> new OpNode '+', $1, $3
     o "Expression - Expression",                -> new OpNode '-', $1, $3
-
-    o "Expression << Expression",               -> new OpNode '<<', $1, $3
-    o "Expression >> Expression",               -> new OpNode '>>', $1, $3
-    o "Expression >>> Expression",              -> new OpNode '>>>', $1, $3
-    o "Expression & Expression",                -> new OpNode '&', $1, $3
-    o "Expression | Expression",                -> new OpNode '|', $1, $3
-    o "Expression ^ Expression",                -> new OpNode '^', $1, $3
-
-    o "Expression <= Expression",               -> new OpNode '<=', $1, $3
-    o "Expression < Expression",                -> new OpNode '<', $1, $3
-    o "Expression > Expression",                -> new OpNode '>', $1, $3
-    o "Expression >= Expression",               -> new OpNode '>=', $1, $3
-
     o "Expression == Expression",               -> new OpNode '==', $1, $3
     o "Expression != Expression",               -> new OpNode '!=', $1, $3
 
-    o "Expression && Expression",               -> new OpNode '&&', $1, $3
-    o "Expression || Expression",               -> new OpNode '||', $1, $3
-    o "Expression OP? Expression",              -> new OpNode '?', $1, $3
+    o "Expression MATH Expression",             -> new OpNode $2, $1, $3
+    o "Expression SHIFT Expression",            -> new OpNode $2, $1, $3
+    o "Expression COMPARE Expression",          -> new OpNode $2, $1, $3
+    o "Expression LOGIC Expression",            -> new OpNode $2, $1, $3
+    o "Value COMPOUND_ASSIGN Expression",       -> new OpNode $2, $1, $3
+    o "Value COMPOUND_ASSIGN INDENT Expression OUTDENT", -> new OpNode $2, $1, $4
 
-    o "Expression -= Expression",               -> new OpNode '-=', $1, $3
-    o "Expression += Expression",               -> new OpNode '+=', $1, $3
-    o "Expression /= Expression",               -> new OpNode '/=', $1, $3
-    o "Expression *= Expression",               -> new OpNode '*=', $1, $3
-    o "Expression %= Expression",               -> new OpNode '%=', $1, $3
-    o "Expression ||= Expression",              -> new OpNode '||=', $1, $3
-    o "Expression &&= Expression",              -> new OpNode '&&=', $1, $3
-    o "Expression ?= Expression",               -> new OpNode '?=', $1, $3
-
-    o "Expression INSTANCEOF Expression",       -> new OpNode 'instanceof', $1, $3
     o "Expression IN Expression",               -> new InNode $1, $3
     o "Expression OF Expression",               -> new OpNode 'in', $1, $3
-    o "Expression ! IN Expression",             -> new OpNode '!', new InNode $1, $4
-    o "Expression ! OF Expression",             -> new OpNode '!', new ParentheticalNode new OpNode 'in', $1, $4
+    o "Expression INSTANCEOF Expression",       -> new OpNode 'instanceof', $1, $3
+    o "Expression UNARY IN Expression",         -> new OpNode $2, new InNode $1, $4
+    o "Expression UNARY OF Expression",         -> new OpNode $2, new ParentheticalNode new OpNode 'in', $1, $4
+    o "Expression UNARY INSTANCEOF Expression", -> new OpNode $2, new ParentheticalNode new OpNode 'instanceof', $1, $4
   ]
 
-}
 
 # Precedence
 # ----------
@@ -569,26 +574,25 @@ grammar: {
 # And not:
 #
 #     (2 + 3) * 4
-operators: [
-  ["left",      '?']
-  ["nonassoc",  'UMINUS', 'UPLUS', '!', '!!', '~', '++', '--']
-  ["left",      '*', '/', '%']
+operators = [
+  ["right",     '?', 'NEW']
+  ["left",      'CALL_START', 'CALL_END']
+  ["nonassoc",  '++', '--']
+  ["right",     'UNARY']
+  ["left",      'MATH']
   ["left",      '+', '-']
-  ["left",      '<<', '>>', '>>>']
-  ["left",      '&', '|', '^']
-  ["left",      '<=', '<', '>', '>=']
-  ["right",     'DELETE', 'INSTANCEOF', 'TYPEOF']
+  ["left",      'SHIFT']
+  ["left",      'COMPARE']
+  ["left",      'INSTANCEOF']
   ["left",      '==', '!=']
-  ["left",      '&&', '||', 'OP?']
-  ["right",     '-=', '+=', '/=', '*=', '%=', '||=', '&&=', '?=']
+  ["left",      'LOGIC']
+  ["right",     'COMPOUND_ASSIGN']
   ["left",      '.']
-  ["right",     'INDENT']
-  ["left",      'OUTDENT']
+  ["nonassoc",  'INDENT', 'OUTDENT']
   ["right",     'WHEN', 'LEADING_WHEN', 'IN', 'OF', 'BY', 'THROW']
-  ["right",     'FOR', 'WHILE', 'UNTIL', 'LOOP', 'NEW', 'SUPER', 'CLASS']
-  ["left",      'EXTENDS']
-  ["right",     'ASSIGN', 'RETURN']
-  ["right",     '->', '=>', 'UNLESS', 'IF', 'ELSE']
+  ["right",     'IF', 'UNLESS', 'ELSE', 'FOR', 'WHILE', 'UNTIL', 'LOOP', 'SUPER', 'CLASS', 'EXTENDS']
+  ["right",     '=', ':', 'RETURN']
+  ["right",     '->', '=>', 'UNLESS', 'POST_IF', 'POST_UNLESS']
 ]
 
 # Wrapping Up
@@ -598,21 +602,20 @@ operators: [
 # our **Jison.Parser**. We do this by processing all of our rules, recording all
 # terminals (every symbol which does not appear as the name of a rule above)
 # as "tokens".
-tokens: []
+tokens = []
 for name, alternatives of grammar
-  grammar[name]: for alt in alternatives
+  grammar[name] = for alt in alternatives
     for token in alt[0].split ' '
       tokens.push token unless grammar[token]
-    alt[1] = "return ${alt[1]}" if name is 'Root'
+    alt[1] = "return #{alt[1]}" if name is 'Root'
     alt
 
 # Initialize the **Parser** with our list of terminal **tokens**, our **grammar**
 # rules, and the name of the root. Reverse the operators because Jison orders
 # precedence from low to high, and we have it high to low
 # (as in [Yacc](http://dinosaur.compilertools.net/yacc/index.html)).
-exports.parser: new Parser {
+exports.parser = new Parser
   tokens:       tokens.join ' '
   bnf:          grammar
   operators:    operators.reverse()
   startSymbol:  'Root'
-}
