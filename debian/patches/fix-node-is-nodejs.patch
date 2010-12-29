@@ -9,7 +9,7 @@ Author: Geza Kovacs <gkovacs@mit.edu>
 +#!/usr/bin/env nodejs
  
  var path = require('path');
- var fs = require('fs');
+ var fs   = require('fs');
 --- a/bin/coffee
 +++ b/bin/coffee
 @@ -1,4 +1,4 @@
@@ -17,4 +17,4 @@ Author: Geza Kovacs <gkovacs@mit.edu>
 +#!/usr/bin/env nodejs
  
  var path = require('path');
- var fs = require('fs');
+ var fs   = require('fs');
