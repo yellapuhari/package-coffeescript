@@ -9,7 +9,7 @@
 # External dependencies.
 fs           = require 'fs'
 path         = require 'path'
-helpers      = require('./helpers').helpers
+helpers      = require './helpers'
 optparse     = require './optparse'
 CoffeeScript = require './coffee-script'
 
@@ -46,7 +46,7 @@ helpers.extend global,
 exports.run = ->
   path.exists 'Cakefile', (exists) ->
     throw new Error("Cakefile not found in #{process.cwd()}") unless exists
-    args = process.argv[2...process.argv.length]
+    args = process.argv.slice 2
     CoffeeScript.run fs.readFileSync('Cakefile').toString(), fileName: 'Cakefile'
     oparse = new optparse.OptionParser switches
     return printTasks() unless args.length
@@ -55,15 +55,15 @@ exports.run = ->
 
 # Display the list of Cake tasks in a format similar to `rake -T`
 printTasks = ->
-  puts ''
-  for all name, task of tasks
+  console.log ''
+  for name, task of tasks
     spaces = 20 - name.length
     spaces = if spaces > 0 then Array(spaces + 1).join(' ') else ''
     desc   = if task.description then "# #{task.description}" else ''
-    puts "cake #{name}#{spaces} #{desc}"
-  puts oparse.help() if switches.length
+    console.log "cake #{name}#{spaces} #{desc}"
+  console.log oparse.help() if switches.length
 
 # Print an error and exit when attempting to all an undefined task.
 missingTask = (task) ->
-  puts "No such task: \"#{task}\""
+  console.log "No such task: \"#{task}\""
   process.exit 1

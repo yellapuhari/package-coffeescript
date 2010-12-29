@@ -7,22 +7,22 @@
 # External dependencies.
 fs             = require 'fs'
 path           = require 'path'
+util           = require 'util'
+helpers        = require './helpers'
 optparse       = require './optparse'
 CoffeeScript   = require './coffee-script'
-{helpers}      = require './helpers'
 {spawn, exec}  = require 'child_process'
 {EventEmitter} = require 'events'
 
-# Allow CoffeeScript to emit Node.js events, and add it to global scope.
+# Allow CoffeeScript to emit Node.js events.
 helpers.extend CoffeeScript, new EventEmitter
-global.CoffeeScript = CoffeeScript
+
+printLine = (line) -> process.stdout.write line + '\n'
+printWarn = (line) -> process.binding('stdio').writeError line + '\n'
 
 # The help banner that is printed when `coffee` is called without arguments.
 BANNER = '''
-  coffee compiles CoffeeScript source files into JavaScript.
-
-  Usage:
-    coffee path/to/script.coffee
+  Usage: coffee [options] path/to/script.coffee
          '''
 
 # The list of all the valid option flags that `coffee` knows how to handle.
@@ -30,15 +30,17 @@ SWITCHES = [
   ['-c', '--compile',         'compile to JavaScript and save as .js files']
   ['-i', '--interactive',     'run an interactive CoffeeScript REPL']
   ['-o', '--output [DIR]',    'set the directory for compiled JavaScript']
+  ['-j', '--join',            'concatenate the scripts before compiling']
   ['-w', '--watch',           'watch scripts for changes, and recompile']
   ['-p', '--print',           'print the compiled JavaScript to stdout']
   ['-l', '--lint',            'pipe the compiled JavaScript through JSLint']
   ['-s', '--stdio',           'listen for and compile scripts over stdio']
   ['-e', '--eval',            'compile a string from the command line']
   ['-r', '--require [FILE*]', 'require a library before executing your script']
-  [      '--no-wrap',         'compile without the top-level function wrapper']
+  ['-b', '--bare',            'compile without the top-level function wrapper']
   ['-t', '--tokens',          'print the tokens that the lexer produces']
   ['-n', '--nodes',           'print the parse tree that Jison produces']
+  [      '--nodejs [ARGS]',   'pass options through to the "node" binary']
   ['-v', '--version',         'display CoffeeScript version']
   ['-h', '--help',            'display this help message']
 ]
@@ -46,6 +48,7 @@ SWITCHES = [
 # Top-level objects shared by all the functions.
 opts         = {}
 sources      = []
+contents     = []
 optionParser = null
 
 # Run `coffee` by parsing passed options and determining what action to take.
@@ -53,21 +56,16 @@ optionParser = null
 # `--` will be passed verbatim to your script as arguments in `process.argv`
 exports.run = ->
   parseOptions()
-  return usage()                              if opts.help
-  return version()                            if opts.version
-  return require './repl'                     if opts.interactive
-  return compileStdio()                       if opts.stdio
-  return compileScript 'console', sources[0]  if opts.eval
-  return require './repl'                     unless sources.length
-  separator = sources.indexOf '--'
-  flags = []
-  if separator >= 0
-    flags   = sources[(separator + 1)...sources.length]
-    sources = sources[0...separator]
+  return forkNode()                      if opts.nodejs
+  return usage()                         if opts.help
+  return version()                       if opts.version
+  return require './repl'                if opts.interactive
+  return compileStdio()                  if opts.stdio
+  return compileScript null, sources[0]  if opts.eval
+  return require './repl'                unless sources.length
   if opts.run
-    flags   = sources[1..sources.length].concat flags
-    sources = [sources[0]]
-  process.ARGV = process.argv = flags
+    opts.literals = sources.splice(1).concat opts.literals
+  process.ARGV = process.argv = process.argv.slice(0, 2).concat opts.literals
   compileScripts()
 
 # Asynchronously read in each CoffeeScript in a list of source files and
@@ -75,7 +73,7 @@ exports.run = ->
 # '.coffee' extension source files in it and all subdirectories.
 compileScripts = ->
   for source in sources
-    base = source
+    base = path.join(source)
     compile = (source, topLevel) ->
       path.exists source, (exists) ->
         throw new Error "File not found: #{source}" unless exists
@@ -85,8 +83,13 @@ compileScripts = ->
               for file in files
                 compile path.join(source, file)
           else if topLevel or path.extname(source) is '.coffee'
-            fs.readFile source, (err, code) -> compileScript(source, code.toString(), base)
-            watch source, base if opts.watch
+            fs.readFile source, (err, code) ->
+              if opts.join
+                contents[sources.indexOf source] = code.toString()
+                compileJoin() if helpers.compact(contents).length is sources.length
+              else
+                compileScript(source, code.toString(), base)
+            watch source, base if opts.watch and not opts.join
     compile source, true
 
 # Compile a single source script, containing the given code, according to the
@@ -101,21 +104,19 @@ compileScript = (file, input, base) ->
     t = task = {file, input, options}
     CoffeeScript.emit 'compile', task
     if      o.tokens      then printTokens CoffeeScript.tokens t.input
-    else if o.nodes       then puts CoffeeScript.nodes(t.input).toString()
+    else if o.nodes       then printLine CoffeeScript.nodes(t.input).toString().trim()
     else if o.run         then CoffeeScript.run t.input, t.options
     else
       t.output = CoffeeScript.compile t.input, t.options
       CoffeeScript.emit 'success', task
-      if o.print          then print t.output
+      if o.print          then printLine t.output.trim()
       else if o.compile   then writeJs t.file, t.output, base
-      else if o.lint      then lint t.output
+      else if o.lint      then lint t.file, t.output
   catch err
-    # Avoid using 'error' as it is a special event -- if there is no handler,
-    # node will print a stack trace and exit the program.
     CoffeeScript.emit 'failure', err, task
     return if CoffeeScript.listeners('failure').length
-    return puts err.message if o.watch
-    error err.stack
+    return printLine err.message if o.watch
+    printWarn err.stack
     process.exit 1
 
 # Attach the appropriate listeners to compile scripts incoming over **stdin**,
@@ -126,7 +127,13 @@ compileStdio = ->
   stdin.on 'data', (buffer) ->
     code += buffer.toString() if buffer
   stdin.on 'end', ->
-    compileScript 'stdio', code
+    compileScript null, code
+
+# After all of the source files are done being read, concatenate and compile
+# them together.
+compileJoin = ->
+  code = contents.join '\n'
+  compileScript "concatenation", code, "concatenation"
 
 # Watch a source CoffeeScript file using `fs.watchFile`, recompiling it every
 # time the file is updated. May be used in combination with other options,
@@ -144,20 +151,21 @@ watch = (source, base) ->
 writeJs = (source, js, base) ->
   filename  = path.basename(source, path.extname(source)) + '.js'
   srcDir    = path.dirname source
-  baseDir   = srcDir.substring base.length
+  baseDir   = if base is '.' then srcDir else srcDir.substring base.length
   dir       = if opts.output then path.join opts.output, baseDir else srcDir
   jsPath    = path.join dir, filename
   compile   = ->
     js = ' ' if js.length <= 0
     fs.writeFile jsPath, js, (err) ->
-      puts "Compiled #{source}" if opts.compile and opts.watch
+      if err then printLine err.message
+      else if opts.compile and opts.watch then util.log "compiled #{source}"
   path.exists dir, (exists) ->
     if exists then compile() else exec "mkdir -p #{dir}", compile
 
 # Pipe compiled JS through JSLint (requires a working `jsl` command), printing
 # any errors or warnings that arise.
-lint = (js) ->
-  printIt = (buffer) -> puts buffer.toString().trim()
+lint = (file, js) ->
+  printIt = (buffer) -> printLine file + ':\t' + buffer.toString().trim()
   conf = __dirname + '/../extras/jsl.conf'
   jsl = spawn 'jsl', ['-nologo', '-stdin', '-conf', conf]
   jsl.stdout.on 'data', printIt
@@ -170,30 +178,39 @@ printTokens = (tokens) ->
   strings = for token in tokens
     [tag, value] = [token[0], token[1].toString().replace(/\n/, '\\n')]
     "[#{tag} #{value}]"
-  puts strings.join(' ')
+  printLine strings.join(' ')
 
 # Use the [OptionParser module](optparse.html) to extract all options from
 # `process.argv` that are specified in `SWITCHES`.
 parseOptions = ->
   optionParser  = new optparse.OptionParser SWITCHES, BANNER
-  o = opts      = optionParser.parse(process.argv[2...process.argv.length])
+  o = opts      = optionParser.parse process.argv.slice 2
   o.compile     or=  !!o.output
   o.run         = not (o.compile or o.print or o.lint)
   o.print       = !!  (o.print or (o.eval or o.stdio and o.compile))
   sources       = o.arguments
 
 # The compile-time options to pass to the CoffeeScript compiler.
-compileOptions = (fileName) ->
-  o = {fileName}
-  o.noWrap = opts['no-wrap']
-  o
+compileOptions = (fileName) -> {fileName, bare: opts.bare}
 
-# Print the `--help` usage message and exit.
+# Start up a new Node.js instance with the arguments in `--nodejs` passed to
+# the `node` binary, preserving the other options.
+forkNode = ->
+  nodeArgs = opts.nodejs.split /\s+/
+  args     = process.argv[1..]
+  args.splice args.indexOf('--nodejs'), 2
+  spawn process.execPath, nodeArgs.concat(args),
+    cwd:        process.cwd()
+    env:        process.env
+    customFds:  [0, 1, 2]
+
+# Print the `--help` usage message and exit. Deprecated switches are not
+# shown.
 usage = ->
-  puts optionParser.help()
+  printLine (new optparse.OptionParser SWITCHES, BANNER).help()
   process.exit 0
 
 # Print the `--version` message and exit.
 version = ->
-  puts "CoffeeScript version #{CoffeeScript.VERSION}"
+  printLine "CoffeeScript version #{CoffeeScript.VERSION}"
   process.exit 0

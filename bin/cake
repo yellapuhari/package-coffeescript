@@ -1,8 +1,7 @@
 #!/usr/bin/env nodejs
 
 var path = require('path');
-var fs = require('fs');
+var fs  = require('fs');
 var lib = '/usr/lib/coffeescript';
 
-require(lib + '/helpers').helpers.extend(global, require('sys'));
 require(lib + '/cake').run();

@@ -79,3 +79,33 @@ ok b is "basic heredoc \#{val}\non two lines"
 
 a = '''here's an apostrophe'''
 ok a is "here's an apostrophe"
+
+
+# The indentation detector ignores blank lines without trailing whitespace
+a = """
+    one
+    two
+
+    """
+ok a is "one\ntwo\n"
+
+eq ''' line 0
+  should not be relevant
+    to the indent level
+''', '
+ line 0\n
+should not be relevant\n
+  to the indent level
+'
+
+eq ''' '\\\' ''', " '\\' "
+eq """ "\\\" """, ' "\\" '
+
+eq '''  <- keep these spaces ->  ''', '  <- keep these spaces ->  '
+
+eq 'multiline nested "interpolations" work', """multiline #{
+  "nested #{(->
+    ok yes
+    "\"interpolations\""
+  )()}"
+} work"""

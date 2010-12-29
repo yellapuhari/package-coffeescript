@@ -7,7 +7,7 @@ Author: Geza Kovacs <gkovacs@mit.edu>
 @@ -2,7 +2,7 @@
  
  var path = require('path');
- var fs = require('fs');
+ var fs  = require('fs');
 -var lib = path.join(path.dirname(fs.realpathSync(__filename)), '../lib');
 +var lib = '/usr/lib/coffeescript';
  
@@ -18,7 +18,7 @@ Author: Geza Kovacs <gkovacs@mit.edu>
 @@ -2,7 +2,7 @@
  
  var path = require('path');
- var fs = require('fs');
+ var fs  = require('fs');
 -var lib = path.join(path.dirname(fs.realpathSync(__filename)), '../lib');
 +var lib = '/usr/lib/coffeescript';
  

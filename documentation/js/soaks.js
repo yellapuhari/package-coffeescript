@@ -1,2 +1,2 @@
-var _ref, _ref2;
-(typeof (_ref2 = ((_ref = lottery.drawWinner()))) === "undefined" || _ref2 === null) ? undefined : _ref2.address == null ? undefined : _ref2.address.zipcode;
+var zip, _ref;
+zip = typeof lottery.drawWinner === "function" ? (_ref = lottery.drawWinner().address) != null ? _ref.zipcode : void 0 : void 0;

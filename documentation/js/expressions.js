@@ -3,7 +3,11 @@ grade = function(student) {
   if (student.excellentWork) {
     return "A+";
   } else if (student.okayStuff) {
-    return student.triedHard ? "B" : "B-";
+    if (student.triedHard) {
+      return "B";
+    } else {
+      return "B-";
+    }
   } else {
     return "C";
   }

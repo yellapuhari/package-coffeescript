@@ -10,13 +10,15 @@ class FirstChild extends Base
   func: (string) ->
     super('one/') + string
 
-class SecondChild extends FirstChild
+SecondChild = class extends FirstChild
   func: (string) ->
     super('two/') + string
 
+thirdCtor = ->
+  @array = [1, 2, 3]
+
 class ThirdChild extends SecondChild
-  constructor: ->
-    @array = [1, 2, 3]
+  constructor: -> thirdCtor.call this
 
   # Gratuitous comment for testing.
   func: (string) ->
@@ -34,6 +36,10 @@ result = (new ThirdChild).func 'four'
 
 ok result is '9two/three/four'
 
+ok (new ThirdChild).array.join(' ') is '1 2 3'
+
+
+identity = (f) -> f
 
 class TopClass
   constructor: (arg) ->
@@ -41,23 +47,28 @@ class TopClass
 
 class SuperClass extends TopClass
   constructor: (arg) ->
-    super 'super-' + arg
+    identity super 'super-' + arg
 
 class SubClass extends SuperClass
   constructor: ->
-    super 'sub'
+    identity super 'sub'
 
 ok (new SubClass).prop is 'top-super-sub'
 
 
 class OneClass
+  @new: 'new'
+  function: 'function'
   constructor: (name) -> @name = name
 
 class TwoClass extends OneClass
+delete TwoClass.new
 
 Function.prototype.new = -> new this arguments...
 
 ok (TwoClass.new('three')).name is 'three'
+ok (new OneClass).function is 'function'
+ok OneClass.new is 'new'
 
 delete Function.prototype.new
 
@@ -70,19 +81,19 @@ Base::['func-func'] = (string) ->
   "dynamic-#{string}"
 
 FirstChild = ->
-FirstChild extends Base
-FirstChild::func = (string) ->
-  super('one/') + string
-
 SecondChild = ->
-SecondChild extends FirstChild
-SecondChild::func = (string) ->
-  super('two/') + string
-
 ThirdChild = ->
   @array = [1, 2, 3]
   this
-ThirdChild extends SecondChild
+
+ThirdChild extends SecondChild extends FirstChild extends Base
+
+FirstChild::func = (string) ->
+  super('one/') + string
+
+SecondChild::func = (string) ->
+  super('two/') + string
+
 ThirdChild::func = (string) ->
   super('three/') + string
 
@@ -151,7 +162,7 @@ class Dog
   bark: =>
     "#{@name} woofs!"
 
-  @static: =>
+  @static = =>
     new this('Dog')
 
 spark = new Dog('Spark')
@@ -174,7 +185,7 @@ class Mini
         @num
 
 m = new Mini
-ok (func() for func in m.generate()).join(' ') is '10 10 10'
+eq (func() for func in m.generate()).join(' '), '10 10 10'
 
 
 # Testing a contructor called with varargs.
@@ -203,30 +214,6 @@ c.method 1, 2, 3, 4
 ok c.args.join(' ') is '1 2 3 4'
 
 
-# Test `extended` callback.
-class Base
-  @extended: (subclass) ->
-    for key, value of @
-      subclass[key] = value
-
-class Element extends Base
-  @fromHTML: (html) ->
-    node = "..."
-    new @(node)
-
-  constructor: (node) ->
-    @node = node
-
-ok Element.extended is Base.extended
-ok Element.__super__ is Base.prototype
-
-class MyElement extends Element
-
-ok MyElement.extended is Base.extended
-ok MyElement.fromHTML is Element.fromHTML
-ok MyElement.__super__ is Element.prototype
-
-
 # Test classes wrapped in decorators.
 func = (klass) ->
   klass::prop = 'value'
@@ -250,9 +237,136 @@ ok instance.method() is 'value'
 
 # Implicit objects as static properties.
 class Static
-  @static:
+  @static =
     one: 1
     two: 2
 
 ok Static.static.one is 1
 ok Static.static.two is 2
+
+
+# Nothing classes.
+c = class
+ok c instanceof Function
+
+
+# Classes with value'd constructors.
+counter = 0
+classMaker = ->
+  counter += 1
+  inner = counter
+  ->
+    @value = inner
+
+class One
+  constructor: classMaker()
+
+class Two
+  constructor: classMaker()
+
+ok (new One).value is 1
+ok (new Two).value is 2
+ok (new One).value is 1
+ok (new Two).value is 2
+
+
+# Exectuable class bodies.
+class A
+  if true
+    b: 'b'
+  else
+    c: 'c'
+
+a = new A
+
+eq a.b, 'b'
+eq a.c, undefined
+
+
+# Light metaprogramming.
+class Base
+  @attr: (name) ->
+    @::[name] = (val) ->
+      if arguments.length > 0
+        @["_#{name}"] = val
+      else
+        @["_#{name}"]
+
+class Robot extends Base
+  @attr 'power'
+  @attr 'speed'
+
+robby = new Robot
+
+ok robby.power() is undefined
+
+robby.power 11
+robby.speed Infinity
+
+eq robby.power(), 11
+eq robby.speed(), Infinity
+
+
+# Namespaced classes do not reserve their function name in outside scope.
+one = {}
+two = {}
+
+class one.Klass
+  @label = "one"
+
+class two.Klass
+  @label = "two"
+
+eq typeof Klass, 'undefined'
+eq one.Klass.label, 'one'
+eq two.Klass.label, 'two'
+
+
+# Nested classes.
+class Outer
+  constructor: ->
+    @label = 'outer'
+
+  class @Inner
+    constructor: ->
+      @label = 'inner'
+
+eq (new Outer).label, 'outer'
+eq (new Outer.Inner).label, 'inner'
+
+
+# Variables in constructor bodies are correctly scoped.
+class A
+  x = 1
+  constructor: ->
+    x = 10
+    y = 20
+  y = 2
+  captured: ->
+    {x, y}
+
+a = new A
+eq a.captured().x, 10
+eq a.captured().y, 2
+
+
+# Issue #924: Static methods in nested classes.
+class A
+  @B: class
+    @c = -> 5
+
+eq A.B.c(), 5
+
+
+# `class extends this` ...
+class A
+  func: -> 'A'
+
+B = null
+makeClass = ->
+  B = class extends this
+    func: -> super + ' B'
+
+makeClass.call A
+
+eq (new B()).func(), 'A B'

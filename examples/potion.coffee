@@ -2,7 +2,7 @@
 
 # 5 times: "Odelay!" print.
 
-print "Odelay!" for [1..5]
+print "Odelay!" for i in [1..5]
 
 
 # add = (x, y): x + y.
@@ -71,7 +71,7 @@ print p.name
 # Policeman ('Constable') print
 
 class Policeman extends Person
-  constructor: (@rank) ->
+  (@rank) ->
 
   print: ->
     print 'My name is ' + @name + " and I'm a " + @rank + '.'
@@ -172,7 +172,7 @@ print a for a in [1..5]
 # if (3 ?gender):
 #   "Huh? Numbers are sexed? That's amazing." print.
 
-if (3).gender?
+if 3.gender?
   print "Huh? Numbers are sexed? That's amazing."
 
 

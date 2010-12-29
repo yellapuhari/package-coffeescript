@@ -3,12 +3,6 @@ a = [((x) -> x), ((x) -> x * x)]
 ok a.length is 2
 
 
-regex = /match/i
-words = "I think there is a match in here."
-
-ok !!words.match(regex)
-
-
 neg = (3 -4)
 
 ok neg is -1
@@ -20,10 +14,6 @@ ok value is 1
 value = 0.0 + -.25 - -.75 + 0.0
 ok value is 0.5
 
-# Decimals don't interfere with ranges.
-ok [0..10].join(' ') is  '0 1 2 3 4 5 6 7 8 9 10'
-ok [0...10].join(' ') is '0 1 2 3 4 5 6 7 8 9'
-
 
 # Can call methods directly on numbers.
 4.valueOf() is 4
@@ -32,13 +22,8 @@ ok [0...10].join(' ') is '0 1 2 3 4 5 6 7 8 9'
 func = ->
   return if true
 
-ok func() is null
+ok func() is undefined
 
-
-str = "\\"
-reg = /\\/
-
-ok reg(str) and str is '\\'
 
 trailingComma = [1, 2, 3,]
 ok (trailingComma[0] is 1) and (trailingComma[2] is 3) and (trailingComma.length is 3)
@@ -52,18 +37,6 @@ trailingComma = [
 
 trailingComma = {k1: "v1", k2: 4, k3: (-> true),}
 ok trailingComma.k3() and (trailingComma.k2 is 4) and (trailingComma.k1 is "v1")
-
-
-money$ = '(((dollars)))'
-
-ok money$ is '\(\(\(dollars\)\)\)'
-
-
-multiline = "one
- two
- three"
-
-ok multiline is 'one two three'
 
 
 ok {a: (num) -> num is 10 }.a 10
@@ -96,9 +69,9 @@ ok obj.is()
 ok not obj.not()
 
 
-# Top-level object literal doesn't break things.
+### Top-level object literal... ###
 obj: 1
-
+### ...doesn't break things. ###
 
 # Funky indentation within non-comma-seperated arrays.
 result = [['a']
@@ -167,6 +140,7 @@ ok obj.fn() is null
 
 # Implicit arguments to function calls:
 func = (obj) -> obj.a
+func2 = -> arguments
 
 result = func
   a: 10
@@ -186,6 +160,27 @@ obj =
 ok obj.one is 'one'
 ok obj.two is 'three'
 
+a = b = undefined
+
+result = func
+    b:1
+    a
+
+ok result is undefined
+
+result = func
+    a:
+        b:2
+    b:1
+ok result.b is 2
+
+result = func2
+    a:1
+    b
+    c:1
+
+ok result.length is 3
+ok result[2].c is 1
 
 # Implicit objects with wacky indentation:
 obj =
@@ -231,11 +226,45 @@ ok obj.three is 3
 
 
 # Implicit objects as part of chained calls.
-identity = (x) -> x.a
+pluck = (x) -> x.a
+eq 100, pluck pluck pluck a: a: a: 100
 
-b = identity identity identity
-  a:
-    a:
-      a: 100
 
-ok b is 100
+eq '\\`', `
+  // Inline JS
+  "\\\`"
+`
+
+
+# Shorthand objects with property references.
+obj =
+  ### comment one ###
+  ### comment two ###
+  one: 1
+  two: 2
+  object: -> {@one, @two}
+  list:   -> [@one, @two]
+
+
+result = obj.object()
+eq result.one, 1
+eq result.two, 2
+eq result.two, obj.list()[1]
+
+
+#542: Objects leading expression statement should be parenthesized.
+{f: -> ok yes }.f() + 1
+
+
+#764: Boolean/Number should be indexable.
+ok 42['toString']
+ok on['toString']
+
+
+# String-keyed objects shouldn't suppress newlines.
+one =
+  '>!': 3
+six: -> 10
+
+ok not one.six
+

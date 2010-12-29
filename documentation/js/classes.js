@@ -1,35 +1,43 @@
 var Animal, Horse, Snake, sam, tom;
-var __extends = function(child, parent) {
-    var ctor = function(){};
-    ctor.prototype = parent.prototype;
-    child.prototype = new ctor();
-    child.prototype.constructor = child;
-    if (typeof parent.extended === "function") parent.extended(child);
-    child.__super__ = parent.prototype;
+var __hasProp = Object.prototype.hasOwnProperty, __extends = function(child, parent) {
+  for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; }
+  function ctor() { this.constructor = child; }
+  ctor.prototype = parent.prototype;
+  child.prototype = new ctor;
+  child.__super__ = parent.prototype;
+  return child;
+};
+Animal = (function() {
+  function Animal(name) {
+    this.name = name;
+  }
+  Animal.prototype.move = function(meters) {
+    return alert(this.name + " moved " + meters + "m.");
   };
-Animal = function(_arg) {
-  this.name = _arg;
-  return this;
-};
-Animal.prototype.move = function(meters) {
-  return alert(this.name + " moved " + meters + "m.");
-};
-Snake = function() {
-  return Animal.apply(this, arguments);
-};
-__extends(Snake, Animal);
-Snake.prototype.move = function() {
-  alert("Slithering...");
-  return Snake.__super__.move.call(this, 5);
-};
-Horse = function() {
-  return Animal.apply(this, arguments);
-};
-__extends(Horse, Animal);
-Horse.prototype.move = function() {
-  alert("Galloping...");
-  return Horse.__super__.move.call(this, 45);
-};
+  return Animal;
+})();
+Snake = (function() {
+  function Snake() {
+    Snake.__super__.constructor.apply(this, arguments);
+  }
+  __extends(Snake, Animal);
+  Snake.prototype.move = function() {
+    alert("Slithering...");
+    return Snake.__super__.move.call(this, 5);
+  };
+  return Snake;
+})();
+Horse = (function() {
+  function Horse() {
+    Horse.__super__.constructor.apply(this, arguments);
+  }
+  __extends(Horse, Animal);
+  Horse.prototype.move = function() {
+    alert("Galloping...");
+    return Horse.__super__.move.call(this, 45);
+  };
+  return Horse;
+})();
 sam = new Snake("Sammy the Python");
 tom = new Horse("Tommy the Palomino");
 sam.move();

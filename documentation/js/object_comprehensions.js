@@ -1,16 +1,15 @@
-var _ref, _result, age, ages, child, yearsOld;
-var __hasProp = Object.prototype.hasOwnProperty;
+var age, ages, child, yearsOld;
 yearsOld = {
   max: 10,
   ida: 9,
   tim: 11
 };
 ages = (function() {
-  _result = []; _ref = yearsOld;
-  for (child in _ref) {
-    if (!__hasProp.call(_ref, child)) continue;
-    age = _ref[child];
-    _result.push(child + " is " + age);
+  var _results;
+  _results = [];
+  for (child in yearsOld) {
+    age = yearsOld[child];
+    _results.push(child + " is " + age);
   }
-  return _result;
+  return _results;
 })();

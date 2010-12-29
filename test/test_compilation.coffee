@@ -1,15 +1,26 @@
 # Ensure that carriage returns don't break compilation on Windows.
-CoffeeScript = require('./../lib/coffee-script')
-Lexer = require('./../lib/lexer')
+eq CoffeeScript.compile('one\r\ntwo', bare: on), 'one;\ntwo;'
 
-js = CoffeeScript.compile("one\r\ntwo", {noWrap: on})
+# `globals: on` removes `var`s
+eq CoffeeScript.compile('x = y', bare: on, globals: on), 'x = y;'
 
-ok js is "one;\ntwo;"
+ok 'passed' is CoffeeScript.eval '"passed"', bare: on, fileName: 'test'
 
+#750
+try ok not CoffeeScript.nodes 'f(->'
+catch e then eq e.message, 'unclosed CALL_START on line 1'
 
-global.resultArray = []
-CoffeeScript.run("resultArray.push i for i of global", {noWrap: on, globals: on, fileName: 'tests'})
+eq CoffeeScript.compile('for k of o then', bare: on, globals: on),
+   'for (k in o) {}'
 
-ok 'setInterval' in global.resultArray
+# Compilations that should fail.
+cantCompile = (code) ->
+  throws -> CoffeeScript.compile code
 
-ok 'passed' is CoffeeScript.eval '"passed"', noWrap: on, globals: on, fileName: 'tests'
+cantCompile 'a = (break)'
+
+cantCompile 'a = (return 5 for item in list)'
+
+cantCompile 'a = (return 5 while condition)'
+
+cantCompile 'a = for x in y\n  return 5'

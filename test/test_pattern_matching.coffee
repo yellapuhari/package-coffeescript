@@ -4,30 +4,22 @@ b = -2
 
 [a, b] = [b, a]
 
-ok a is -2
-ok b is -1
+eq a, -2
+eq b, -1
 
 func = ->
   [a, b] = [b, a]
 
-ok func().join(' ') is '-1 -2'
+eq func().join(' '), '-1 -2'
+eq a, -1
+eq b, -2
 
-noop = ->
-
-noop [a,b] = [c,d] = [1,2]
-
-ok a is 1 and b is 2
+#713
+eq (onetwo = [1, 2]), [a, b] = [c, d] = onetwo
+ok a is c is 1 and b is d is 2
 
 
 # Array destructuring, including splats.
-arr = [1, 2, 3]
-
-[a, b, c] = arr
-
-ok a is 1
-ok b is 2
-ok c is 3
-
 [x,y...,z] = [1,2,3,4,5]
 
 ok x is 1
@@ -111,7 +103,7 @@ ok age    is 26
 ok first  is "Prince"
 ok second is "Bowie"
 
-# Pattern matching within for..loops
+# Pattern matching within for..loops.
 
 persons = {
   George: { name: "Bob" },
@@ -119,9 +111,9 @@ persons = {
   Christopher: { name: "Stan" }
 }
 
-join1 = "#{key}: #{name}" for key, { name } of persons
+join1 = ("#{key}: #{name}" for key, { name } of persons)
 
-deepEqual join1, ["George: Bob", "Bob: Alice", "Christopher: Stan"]
+eq join1.join(' / '), "George: Bob / Bob: Alice / Christopher: Stan"
 
 persons = [
   { name: "Bob", parent: { name: "George" } },
@@ -129,21 +121,42 @@ persons = [
   { name: "Stan", parent: { name: "Christopher" } }
 ]
 
-join2 = "#{parent}: #{name}" for { name, parent: { name: parent } } in persons
+join2 = ("#{parent}: #{name}" for { name, parent: { name: parent } } in persons)
 
-deepEqual join1, join2
+eq join1.join(' '), join2.join(' ')
 
 persons = [['Bob', ['George']], ['Alice', ['Bob']], ['Stan', ['Christopher']]]
-join3 = "#{parent}: #{name}" for [name, [parent]] in persons
+join3 = ("#{parent}: #{name}" for [name, [parent]] in persons)
 
-deepEqual join2, join3
+eq join2.join(' '), join3.join(' ')
 
 
 # Pattern matching doesn't clash with implicit block objects.
 obj = a: 101
-func -> true
+func = -> true
 
 if func func
   {a} = obj
 
 ok a is 101
+
+[x] = {0: y} = {'0': z} = [Math.random()]
+ok x is y is z, 'destructuring in multiple'
+
+
+# Destructuring into an object.
+obj =
+  func: (list, object) ->
+    [@one, @two] = list
+    {@a, @b} = object
+    {@a} = object
+    null
+
+{} = [] = ok yes, 'empty assignment is allowed'
+
+obj.func [1, 2], a: 'a', b: 'b'
+
+eq obj.one, 1
+eq obj.two, 2
+eq obj.a, 'a'
+eq obj.b, 'b'
