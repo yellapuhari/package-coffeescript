@@ -1,8 +1,9 @@
 coffeescript (1.0.0-1) unstable; urgency=low
 
   * New upstream release
+  * Minimum nodejs dependency version bumped to 0.2.5
 
- -- Geza Kovacs <gkovacs@mit.edu>  Wed, 29 Dec 2010 02:10:23 -0500
+ -- Geza Kovacs <gkovacs@mit.edu>  Wed, 29 Dec 2010 04:01:12 -0500
 
 coffeescript (0.9.4-1) unstable; urgency=low
 
