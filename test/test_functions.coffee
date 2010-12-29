@@ -22,18 +22,18 @@ obj = {
   name: 'Fred'
 
   bound: ->
-    (=> ok(this.name is 'Fred'))()
+    do (=> eq this, obj)
 
   unbound: ->
-    (-> ok(!this.name?))()
+    do (-> ok this isnt obj)
 
   nested: ->
     (=>
-      (=>
+      do (=>
         (=>
-          ok this.name is 'Fred'
+          eq this, obj
         )()
-      )()
+      )
     )()
 }
 
@@ -53,7 +53,7 @@ memoize = (fn) ->
 
 Math = {
   Add: (a, b) -> a + b
-  AnonymousAdd: ((a, b) -> a + b)
+  AnonymousAdd: (a, b) -> a + b
   FastAdd: memoize (a, b) -> a + b
 }
 
@@ -61,11 +61,6 @@ ok Math.Add(5, 5) is 10
 ok Math.AnonymousAdd(10, 10) is 20
 ok Math.FastAdd(20, 20) is 40
 
-
-# Parens are optional on simple function calls.
-ok 100 > 1 if 1 > 0
-ok true unless false
-ok true for i in [1..3]
 
 okFunc = (f) -> ok(f())
 okFunc -> true
@@ -122,7 +117,7 @@ mult = (x, mids..., y) ->
 
 ok mult(1, 2,) is 2
 ok mult(1, 2, 3,) is 6
-ok mult(10,[1..6]...,) is 7200
+ok mult(10, (i for i in [1..6])...) is 7200
 
 
 # Test for inline functions with parentheses and implicit calls.
@@ -196,6 +191,7 @@ ok result.one is 1
 
 
 # Assignment to a Object.prototype-named variable should not leak to outer scope.
+# FIXME: fails on IE
 (->
   constructor = 'word'
 )()
@@ -243,11 +239,141 @@ ok v is args[i] for v, i in type.args
 Type1 = (@a, @b, @c) ->
 type1 = new Type1 args...
 
-ok type1 and type1 instanceof Type1
-ok type1.a is args[0] and type1.b is args[1] and type1.c is args[2] 
+ok type1 instanceof   Type1
+eq type1.constructor, Type1
+ok type1.a is args[0] and type1.b is args[1] and type1.c is args[2]
 
 
 # Ensure that constructors invoked with splats cache the function.
 called = 0
 get = -> if called++ then false else class Type
 new get() args...
+
+
+# Chained blocks, with proper indentation levels:
+counter =
+  results: []
+  tick: (func) ->
+    @results.push func()
+    this
+
+counter
+  .tick ->
+    3
+  .tick ->
+    2
+  .tick ->
+    1
+
+eq counter.results.join(' '), '3 2 1'
+
+
+# Make incorrect indentation safe.
+func = ->
+  obj = {
+          key: 10
+        }
+  obj.key - 5
+
+eq func(), 5
+
+
+# Ensure that chained calls with indented implicit object literals below are
+# alright.
+result = null
+obj =
+  method: (val)  -> this
+  second: (hash) -> result = hash.three
+
+
+obj
+  .method(
+    101
+  ).second(
+    one:
+      two: 2
+    three: 3
+  )
+
+eq result, 3
+
+
+# Test newline-supressed call chains with nested functions.
+obj  =
+  call: -> this
+func = ->
+  obj
+    .call ->
+      one two
+    .call ->
+      three four
+  101
+
+eq func(), 101
+
+
+# `new` shouldn't add extra parens
+ok new Date().constructor is Date
+
+
+# `new` works against bare function
+eq Date, new ->
+  eq this, new => this
+  Date
+
+
+# Implicit objects with number arguments.
+func = (x, y) -> y
+obj =
+  prop: func "a", 1
+
+ok obj.prop is 1
+
+
+# Non-spaced unary and binary operators should cause a function call.
+func = (val) -> val + 1
+ok (func +5) is 6
+ok (func -5) is -4
+
+
+# Prefix unary assignment operators are allowed in parenless calls.
+val = 5
+ok (func --val) is 5
+
+
+eq ok, new ->
+  ok
+  ### Should `return` implicitly   ###
+  ### even with trailing comments. ###
+
+
+#855: execution context for `func arr...` should be `null`
+(->
+  global = @
+  contextTest = -> ok global is @
+  array = []
+  contextTest array
+  contextTest.apply null, array
+  contextTest array...
+)()
+
+
+# #894: Splatting against constructor-chained functions.
+x = null
+
+class Foo
+  bar: (y) -> x = y
+
+new Foo().bar([101]...)
+
+eq x, 101
+
+
+test "#904: Destructuring function arguments with same-named variables in scope", ->
+  a = b = nonce = {}
+  fn = ([a,b]) -> {a:a,b:b}
+  result = fn([c={},d={}])
+  eq c, result.a
+  eq d, result.b
+  eq nonce, a
+  eq nonce, b

@@ -6,7 +6,7 @@
 # with the outside.
 
 # Import the helpers we plan to use.
-{extend} = require('./helpers').helpers
+{extend, last} = require './helpers'
 
 exports.Scope = class Scope
 
@@ -17,93 +17,78 @@ exports.Scope = class Scope
   # as well as a reference to the **Expressions** node is belongs to, which is
   # where it should declare its variables, and a reference to the function that
   # it wraps.
-  constructor: (parent, expressions, method) ->
-    [@parent, @expressions, @method] = [parent, expressions, method]
-    @variables = {}
-    if @parent
-      @garbage = @parent.garbage
+  constructor:(@parent, @expressions, @method) ->
+    @variables = [{name: 'arguments', type: 'arguments'}]
+    @positions = {}
+    Scope.root = this unless @parent
+
+  # Adds a new variable or overrides an existing one.
+  add: (name, type, immediate) ->
+    return @parent.add name, type, immediate if @shared and not immediate
+    if typeof (pos = @positions[name]) is 'number'
+      @variables[pos].type = type
     else
-      @garbage   = []
-      Scope.root = this
-
-  # Create a new garbage level
-  startLevel: ->
-    @garbage.push []
-
-  # Return to the previous garbage level and erase referenced temporary
-  # variables in current level from scope.
-  endLevel: ->
-    (@variables[name] = 'reuse') for name in @garbage.pop() when @variables[name] is 'var'
+      @positions[name] = @variables.push({name, type}) - 1
 
   # Look up a variable name in lexical scope, and declare it if it does not
   # already exist.
   find: (name, options) ->
-    return true if @check name, options
-    @variables[name] = 'var'
-    false
-
-  # Test variables and return true the first time fn(v, k) returns true
-  any: (fn) ->
-    for v, k of @variables when fn(v, k)
-      return true
-    return false
+    return yes if @check name, options
+    @add name, 'var'
+    no
 
   # Reserve a variable name as originating from a function parameter for this
   # scope. No `var` required for internal references.
   parameter: (name) ->
-    @variables[name] = 'param'
+    return if @shared and @parent.check name, yes
+    @add name, 'param'
 
   # Just check to see if a variable has already been declared, without reserving,
   # walks up to the root scope.
-  check: (name, options) ->
-    immediate = Object::hasOwnProperty.call @variables, name
-    return immediate if immediate or (options and options.immediate)
-    !!(@parent and @parent.check(name))
+  check: (name, immediate) ->
+    found = !!@type(name)
+    return found if found or immediate
+    !!@parent?.check name
 
   # Generate a temporary variable name at the given index.
-  temporary: (type, index) ->
-    if type.length > 1
-      '_' + type + if index > 1 then index else ''
+  temporary: (name, index) ->
+    if name.length > 1
+      '_' + name + if index > 1 then index else ''
     else
-      '_' + (index + parseInt type, 36).toString(36).replace /\d/g, 'a'
+      '_' + (index + parseInt name, 36).toString(36).replace /\d/g, 'a'
+
+  # Gets the type of a variable.
+  type: (name) ->
+    return v.type for v in @variables when v.name is name
+    null
 
   # If we need to store an intermediate result, find an available name for a
   # compiler-generated variable. `_var`, `_var2`, and so on...
   freeVariable: (type) ->
     index = 0
-    index++ while @check(temp = @temporary type, index) and @variables[temp] isnt 'reuse'
-    @variables[temp] = 'var'
-    @garbage[@garbage.length - 1].push temp if @garbage.length
+    index++ while @check((temp = @temporary type, index), true)
+    @add temp, 'var', yes
     temp
 
   # Ensure that an assignment is made at the top of this scope
   # (or at the top-level scope, if requested).
   assign: (name, value) ->
-    @variables[name] = value: value, assigned: true
+    @add name, value: value, assigned: true
+    @hasAssignments = yes
 
-  # Does this scope reference any variables that need to be declared in the
-  # given function body?
-  hasDeclarations: (body) ->
-    body is @expressions and @any (k, val) -> val is 'var' or val is 'reuse'
-
-  # Does this scope reference any assignments that need to be declared at the
-  # top of the given function body?
-  hasAssignments: (body) ->
-    body is @expressions and @any (k, val) -> val.assigned
+  # Does this scope have any declared variables?
+  hasDeclarations: ->
+    !!@declaredVariables().length
 
   # Return the list of variables first declared in this scope.
   declaredVariables: ->
-    (key for key, val of @variables when val is 'var' or val is 'reuse').sort()
+    realVars = []
+    tempVars = []
+    for v in @variables when v.type is 'var'
+      (if v.name.charAt(0) is '_' then tempVars else realVars).push v.name
+    realVars.sort().concat tempVars.sort()
 
   # Return the list of assignments that are supposed to be made at the top
   # of this scope.
   assignedVariables: ->
-    "#{key} = #{val.value}" for key, val of @variables when val.assigned
-
-  # Compile the JavaScript for all of the variable declarations in this scope.
-  compiledDeclarations: ->
-    @declaredVariables().join ', '
-
-  # Compile the JavaScript forall of the variable assignments in this scope.
-  compiledAssignments: ->
-    @assignedVariables().join ', '
+    "#{v.name} = #{v.type.value}" for v in @variables when v.type.assigned

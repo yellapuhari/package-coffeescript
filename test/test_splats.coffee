@@ -1,81 +1,49 @@
-func = (first, second, rest...) ->
-  rest.join ' '
+# Splats
+# ------
+# note: splats in parameter lists of function definitions are tested in `arguments.coffee`
 
-result = func 1, 2, 3, 4, 5
+# shared identity function
+id = (_) -> if arguments.length is 1 then _ else Array::slice.call(arguments)
 
-ok result is "3 4 5"
+test "passing splats to functions", ->
+  arrayEq [0..4], id id [0..4]...
 
-
-gold = silver = bronze = theField = last = null
-
-medalists = (first, second, third, rest..., unlucky) ->
-  gold     = first
-  silver   = second
-  bronze   = third
-  theField = rest.concat([last])
-  last     = unlucky
-
-contenders = [
-  "Michael Phelps"
-  "Liu Xiang"
-  "Yao Ming"
-  "Allyson Felix"
-  "Shawn Johnson"
-  "Roman Sebrle"
-  "Guo Jingjing"
-  "Tyson Gay"
-  "Asafa Powell"
-  "Usain Bolt"
-]
-
-medalists "Mighty Mouse", contenders...
-
-ok gold is "Mighty Mouse"
-ok silver is "Michael Phelps"
-ok bronze is "Liu Xiang"
-ok last is "Usain Bolt"
-ok theField.length is 8
-
-contenders.reverse()
-medalists contenders[0...2]..., "Mighty Mouse", contenders[2...contenders.length]...
-
-ok gold is "Usain Bolt"
-ok silver is "Asafa Powell"
-ok bronze is "Mighty Mouse"
-ok last is "Michael Phelps"
-ok theField.length is 8
-
-medalists contenders..., 'Tim', 'Moe', 'Jim'
-ok last is 'Jim'
+  fn = (a, b, c..., d) -> [a, b, c, d]
+  [first, second, others, last] = fn [0..3]..., 4, [5...8]...
+  eq 0, first
+  eq 1, second
+  arrayEq [2..6], others
+  eq 7, last
 
 
-obj = {
+obj =
   name: 'moe'
   accessor: (args...) ->
     [@name].concat(args).join(' ')
   getNames: ->
     args = ['jane', 'ted']
     @accessor(args...)
-}
+  index: 0
+  0: {method: -> this is obj[0]}
 
 ok obj.getNames() is 'moe jane ted'
+ok obj[obj.index++].method([]...), 'should cache base value'
 
-
-crowd = [
-  contenders...
-  "Mighty Mouse"
-]
-
-bests = [
-  "Mighty Mouse"
-  contenders[0..3]...
-]
-
-ok crowd[0] is contenders[0]
-ok crowd[10] is "Mighty Mouse"
-
-ok bests[1] is contenders[0]
-ok bests[4] is contenders[3]
+#crowd = [
+#  contenders...
+#  "Mighty Mouse"
+#]
+#
+#bests = [
+#  "Mighty Mouse"
+#  contenders.slice(0, 4)...
+#]
+#
+#ok crowd[0] is contenders[0]
+#ok crowd[10] is "Mighty Mouse"
+#
+#ok bests[1] is contenders[0]
+#ok bests[4] is contenders[3]
 
 
 # Finally, splats with super() within classes.
@@ -113,3 +81,22 @@ list = [a = 0, nums..., b = 4]
 ok a is 0
 ok b is 4
 ok list.join(' ') is '0 1 2 3 4'
+
+
+# Splat on a line by itself is invalid.
+failed = true
+try
+  CoffeeScript.compile "x 'a'\n...\n"
+  failed = false
+catch err
+ok failed
+
+
+# multiple generated references
+(->
+  a = {b: []}
+  a.b[true] = -> this == a.b
+  c = 0
+  d = []
+  ok a.b[0<++c<2] d...
+)()

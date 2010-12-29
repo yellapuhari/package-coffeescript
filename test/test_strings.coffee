@@ -1,3 +1,24 @@
+eq '(((dollars)))', '\(\(\(dollars\)\)\)'
+eq 'one two three', "one
+ two
+ three"
+eq "four five", 'four
+
+ five'
+
+#647
+eq "''Hello, World\\''", '''
+'\'Hello, World\\\''
+'''
+eq '""Hello, World\\""', """
+"\"Hello, World\\\""
+"""
+eq 'Hello, World\n', '''
+Hello, World\
+
+'''
+
+
 hello = 'Hello'
 world = 'World'
 ok '#{hello} #{world}!' is '#{hello} #{world}!'
@@ -78,3 +99,20 @@ ok result is 'a bb c'
 
 foo = "hello"
 ok "#{foo.replace("\"", "")}" is 'hello'
+
+
+eq 'multiline nested "interpolations" work', """multiline #{
+  "nested #{
+    ok true
+    "\"interpolations\""
+  }"
+} work"""
+
+
+# Issue #923: Tricky interpolation.
+eq "#{ "{" }", "{"
+
+eq "#{ '#{}}' } }", '#{}} }'
+
+eq "#{"'#{ ({a: "b#{1}"}['a']) }'"}", "'b1'"
+

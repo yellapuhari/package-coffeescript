@@ -1,32 +1,36 @@
 # CoffeeScript can be used both on the server, as a command-line compiler based
 # on Node.js/V8, or to run CoffeeScripts directly in the browser. This module
-# contains the main entry functions for tokenzing, parsing, and compiling source
-# CoffeeScript into JavaScript.
+# contains the main entry functions for tokenizing, parsing, and compiling
+# source CoffeeScript into JavaScript.
 #
 # If included on a webpage, it will automatically sniff out, compile, and
 # execute all scripts present in `text/coffeescript` tags.
 
-path      = require 'path'
-{Lexer}   = require './lexer'
-{parser}  = require './parser'
+fs               = require 'fs'
+path             = require 'path'
+{Lexer,RESERVED} = require './lexer'
+{parser}         = require './parser'
 
-# TODO: Remove registerExtension when fully deprecated
+# TODO: Remove registerExtension when fully deprecated.
 if require.extensions
-  fs = require 'fs'
   require.extensions['.coffee'] = (module, filename) ->
     content = compile fs.readFileSync filename, 'utf8'
-    module.filename = "#{filename} (compiled)"
-    module._compile content, module.filename
+    module._compile content, filename
 else if require.registerExtension
   require.registerExtension '.coffee', (content) -> compile content
 
 # The current CoffeeScript version number.
-exports.VERSION = '0.9.4'
+exports.VERSION = '1.0.0'
+
+# Words that cannot be used as identifiers in CoffeeScript code
+exports.RESERVED = RESERVED
+
+# Expose helpers for testing.
+exports.helpers = require './helpers'
 
 # Compile a string of CoffeeScript code to JavaScript, using the Coffee/Jison
 # compiler.
-exports.compile = compile = (code, options) ->
-  options or= {}
+exports.compile = compile = (code, options = {}) ->
   try
     (parser.parse lexer.tokenize code).compile options
   catch err
@@ -34,14 +38,17 @@ exports.compile = compile = (code, options) ->
     throw err
 
 # Tokenize a string of CoffeeScript code, and return the array of tokens.
-exports.tokens = (code) ->
-  lexer.tokenize code
+exports.tokens = (code, options) ->
+  lexer.tokenize code, options
 
-# Tokenize and parse a string of CoffeeScript code, and return the AST. You can
-# then compile it by calling `.compile()` on the root, or traverse it by using
-# `.traverse()` with a callback.
-exports.nodes = (code) ->
-  parser.parse lexer.tokenize code
+# Parse a string of CoffeeScript code or an array of lexed tokens, and
+# return the AST. You can then compile it by calling `.compile()` on the root,
+# or traverse it by using `.traverse()` with a callback.
+exports.nodes = (source, options) ->
+  if typeof source is 'string'
+    parser.parse lexer.tokenize source, options
+  else
+    parser.parse source
 
 # Compile and execute a string of CoffeeScript (on the server), correctly
 # setting `__filename`, `__dirname`, and relative `require()`.
@@ -50,19 +57,22 @@ exports.run = (code, options) ->
   root = module
   while root.parent
     root = root.parent
-  # Set the filename
-  root.filename = __filename = "#{options.fileName} (compiled)"
-  # Clear the module cache
+  # Set the filename.
+  root.filename = fs.realpathSync options.fileName or '.'
+  # Clear the module cache.
   root.moduleCache = {} if root.moduleCache
-  # Compile
-  root._compile exports.compile(code, options), root.filename
+  # Compile.
+  if path.extname(root.filename) isnt '.coffee' or require.extensions
+    root._compile compile(code, options), root.filename
+  else
+    root._compile code, root.filename
 
 # Compile and evaluate a string of CoffeeScript (in a Node.js-like environment).
 # The CoffeeScript REPL uses this to run the input.
 exports.eval = (code, options) ->
   __filename = options.fileName
   __dirname  = path.dirname __filename
-  eval exports.compile(code, options)
+  eval compile code, options
 
 # Instantiate a Lexer for our use here.
 lexer = new Lexer
@@ -72,14 +82,11 @@ lexer = new Lexer
 # directly as a "Jison lexer".
 parser.lexer =
   lex: ->
-    token = @tokens[@pos] or [""]
-    @pos += 1
-    this.yylineno = token[2]
-    this.yytext   = token[1]
-    token[0]
-  setInput: (tokens) ->
-    @tokens = tokens
-    @pos    = 0
-  upcomingInput: -> ""
+    [tag, @yytext, @yylineno] = @tokens[@pos++] or ['']
+    tag
+  setInput: (@tokens) ->
+    @pos = 0
+  upcomingInput: ->
+    ""
 
 parser.yy = require './nodes'

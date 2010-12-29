@@ -1,3 +1,11 @@
+# Chaining
+# --------
+
+# shared identity function
+id = (_) -> if arguments.length is 1 then _ else Array::slice.call(arguments)
+
+
+
 # Basic chained function calls.
 identityWrap = (x) ->
   -> x
@@ -5,6 +13,17 @@ identityWrap = (x) ->
 result = identityWrap(identityWrap(true))()()
 
 ok result
+
+
+# Should be able to look at prototypes on keywords.
+obj =
+  withAt:   -> @::prop
+  withThis: -> this::prop
+  proto:
+    prop: 100
+obj.prototype = obj.proto
+eq obj.withAt()  , 100
+eq obj.withThis(), 100
 
 
 # Chained accesses split on period/newline, backwards and forwards.
@@ -46,11 +65,13 @@ func(
               [[]]]],
     []])
 
-id = (x) -> x
-
 greeting = id(
               """
               Hello
               """)
 
 ok greeting is "Hello"
+
+ok not Date
+::
+?.foo, '`?.` and `::` should also continue lines'

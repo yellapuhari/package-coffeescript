@@ -1,4 +1,4 @@
-var _result, lyrics, num;
+var lyrics, num;
 if (this.studyingEconomics) {
   while (supply > demand) {
     buy();
@@ -9,10 +9,10 @@ if (this.studyingEconomics) {
 }
 num = 6;
 lyrics = (function() {
-  _result = [];
+  var _results;
+  _results = [];
   while (num -= 1) {
-    _result.push(num + " little monkeys, jumping on the bed.\
-    One fell out and bumped his head.");
+    _results.push(num + " little monkeys, jumping on the bed.    One fell out and bumped his head.");
   }
-  return _result;
+  return _results;
 })();

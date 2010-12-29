@@ -7,7 +7,7 @@ is_valid_identifier = (identifier) ->
   sum = 0
   alt = false
 
-  for i in [(identifier.length - 1)..0]
+  for i in [identifier.length - 1..0] by -1
 
     # Get the next digit.
     num = parseInt identifier.charAt(i), 10
@@ -31,6 +31,6 @@ is_valid_identifier = (identifier) ->
 
 
 # Tests.
-puts is_valid_identifier("49927398716")      is true
-puts is_valid_identifier("4408041234567893") is true
-puts is_valid_identifier("4408041234567890") is false
+console.log is_valid_identifier("49927398716")      is true
+console.log is_valid_identifier("4408041234567893") is true
+console.log is_valid_identifier("4408041234567890") is false

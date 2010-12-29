@@ -13,19 +13,23 @@ exports.OptionParser = class OptionParser
   #     [short-flag, long-flag, description]
   #
   # Along with an an optional banner for the usage help.
-  constructor: (rules, banner) ->
-    @banner = banner
-    @rules  = buildRules rules
+  constructor: (rules, @banner) ->
+    @rules = buildRules rules
 
   # Parse the list of arguments, populating an `options` object with all of the
   # specified options, and returning it. `options.arguments` will be an array
-  # containing the remaning non-option arguments. This is a simpler API than
-  # many option parsers that allow you to attach callback actions for every
-  # flag. Instead, you're responsible for interpreting the options object.
+  # containing the remaining non-option arguments. `options.literals` will be
+  # an array of options that are meant to be passed through directly to the
+  # executing script. This is a simpler API than many option parsers that allow
+  # you to attach callback actions for every flag. Instead, you're responsible
+  # for interpreting the options object.
   parse: (args) ->
-    options = arguments: []
+    options = arguments: [], literals: []
     args    = normalizeArguments args
     for arg, i in args
+      if arg is '--'
+        options.literals = args[(i + 1)..]
+        break
       isOption = !!(arg.match(LONG_FLAG) or arg.match(SHORT_FLAG))
       matchedRule = no
       for rule in @rules
@@ -36,7 +40,7 @@ exports.OptionParser = class OptionParser
           break
       throw new Error "unrecognized option: #{arg}" if isOption and not matchedRule
       if not isOption
-        options.arguments = args[i...args.length]
+        options.arguments = args.slice i
         break
     options
 
@@ -70,10 +74,9 @@ buildRules = (rules) ->
 
 # Build a rule from a `-o` short flag, a `--output [DIR]` long flag, and the
 # description of what the option does.
-buildRule = (shortFlag, longFlag, description, options) ->
+buildRule = (shortFlag, longFlag, description, options = {}) ->
   match     = longFlag.match(OPTIONAL)
   longFlag  = longFlag.match(LONG_FLAG)[1]
-  options or= {}
   {
     name:         longFlag.substr 2
     shortFlag:    shortFlag
