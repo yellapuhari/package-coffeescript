@@ -1,3 +1,10 @@
+coffeescript (1.0.0-2) unstable; urgency=low
+
+  * Remove patch because nodejs now uses upstream names (Closes: #611701)
+  * Minimum nodejs dependency version bumped to 0.2.6
+
+ -- Geza Kovacs <gkovacs@mit.edu>  Mon, 31 Jan 2011 22:14:15 -0500
+
 coffeescript (1.0.0-1) unstable; urgency=low
 
   * New upstream release
