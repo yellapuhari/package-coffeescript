@@ -4,4 +4,4 @@
 include /usr/share/cdbs/1/rules/debhelper.mk
 
 binary-fixup/coffeescript::
-	chmod -x $(cdbs_curdestdir)/usr/lib/coffeescript/*
+	chmod -R a-x,a+X $(cdbs_curdestdir)/usr/lib/coffeescript/
