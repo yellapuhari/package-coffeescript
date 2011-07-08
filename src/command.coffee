@@ -1,13 +1,12 @@
 # The `coffee` utility. Handles command-line compilation of CoffeeScript
 # into various forms: saved into `.js` files or printed to stdout, piped to
-# [JSLint](http://javascriptlint.com/) or recompiled every time the source is
+# [JavaScript Lint](http://javascriptlint.com/) or recompiled every time the source is
 # saved, printed as a token stream or as the syntax tree, or launch an
 # interactive REPL.
 
 # External dependencies.
 fs             = require 'fs'
 path           = require 'path'
-util           = require 'util'
 helpers        = require './helpers'
 optparse       = require './optparse'
 CoffeeScript   = require './coffee-script'
@@ -30,10 +29,10 @@ SWITCHES = [
   ['-c', '--compile',         'compile to JavaScript and save as .js files']
   ['-i', '--interactive',     'run an interactive CoffeeScript REPL']
   ['-o', '--output [DIR]',    'set the directory for compiled JavaScript']
-  ['-j', '--join',            'concatenate the scripts before compiling']
+  ['-j', '--join [FILE]',     'concatenate the scripts before compiling']
   ['-w', '--watch',           'watch scripts for changes, and recompile']
   ['-p', '--print',           'print the compiled JavaScript to stdout']
-  ['-l', '--lint',            'pipe the compiled JavaScript through JSLint']
+  ['-l', '--lint',            'pipe the compiled JavaScript through JavaScript Lint']
   ['-s', '--stdio',           'listen for and compile scripts over stdio']
   ['-e', '--eval',            'compile a string from the command line']
   ['-r', '--require [FILE*]', 'require a library before executing your script']
@@ -59,6 +58,7 @@ exports.run = ->
   return forkNode()                      if opts.nodejs
   return usage()                         if opts.help
   return version()                       if opts.version
+  loadRequires()                         if opts.require
   return require './repl'                if opts.interactive
   return compileStdio()                  if opts.stdio
   return compileScript null, sources[0]  if opts.eval
@@ -66,6 +66,8 @@ exports.run = ->
   if opts.run
     opts.literals = sources.splice(1).concat opts.literals
   process.ARGV = process.argv = process.argv.slice(0, 2).concat opts.literals
+  process.argv[0] = 'coffee'
+  process.execPath = require.main.filename
   compileScripts()
 
 # Asynchronously read in each CoffeeScript in a list of source files and
@@ -76,8 +78,9 @@ compileScripts = ->
     base = path.join(source)
     compile = (source, topLevel) ->
       path.exists source, (exists) ->
-        throw new Error "File not found: #{source}" unless exists
+        throw new Error "File not found: #{source}" if topLevel and not exists
         fs.stat source, (err, stats) ->
+          throw err if err
           if stats.isDirectory()
             fs.readdir source, (err, files) ->
               for file in files
@@ -86,7 +89,7 @@ compileScripts = ->
             fs.readFile source, (err, code) ->
               if opts.join
                 contents[sources.indexOf source] = code.toString()
-                compileJoin() if helpers.compact(contents).length is sources.length
+                compileJoin() if helpers.compact(contents).length > 0
               else
                 compileScript(source, code.toString(), base)
             watch source, base if opts.watch and not opts.join
@@ -98,8 +101,6 @@ compileScripts = ->
 compileScript = (file, input, base) ->
   o = opts
   options = compileOptions file
-  if o.require
-    require(if helpers.starts(req, '.') then fs.realpathSync(req) else req) for req in o.require
   try
     t = task = {file, input, options}
     CoffeeScript.emit 'compile', task
@@ -133,7 +134,14 @@ compileStdio = ->
 # them together.
 compileJoin = ->
   code = contents.join '\n'
-  compileScript "concatenation", code, "concatenation"
+  compileScript opts.join, code, opts.join
+
+# Load files that are to-be-required before compilation occurs.
+loadRequires = ->
+  realFilename = module.filename
+  module.filename = '.'
+  require req for req in opts.require
+  module.filename = realFilename
 
 # Watch a source CoffeeScript file using `fs.watchFile`, recompiling it every
 # time the file is updated. May be used in combination with other options,
@@ -157,8 +165,10 @@ writeJs = (source, js, base) ->
   compile   = ->
     js = ' ' if js.length <= 0
     fs.writeFile jsPath, js, (err) ->
-      if err then printLine err.message
-      else if opts.compile and opts.watch then util.log "compiled #{source}"
+      if err
+        printLine err.message
+      else if opts.compile and opts.watch
+        console.log "#{(new Date).toLocaleTimeString()} - compiled #{source}"
   path.exists dir, (exists) ->
     if exists then compile() else exec "mkdir -p #{dir}", compile
 
@@ -191,7 +201,7 @@ parseOptions = ->
   sources       = o.arguments
 
 # The compile-time options to pass to the CoffeeScript compiler.
-compileOptions = (fileName) -> {fileName, bare: opts.bare}
+compileOptions = (filename) -> {filename, bare: opts.bare}
 
 # Start up a new Node.js instance with the arguments in `--nodejs` passed to
 # the `node` binary, preserving the other options.
@@ -208,9 +218,7 @@ forkNode = ->
 # shown.
 usage = ->
   printLine (new optparse.OptionParser SWITCHES, BANNER).help()
-  process.exit 0
 
 # Print the `--version` message and exit.
 version = ->
   printLine "CoffeeScript version #{CoffeeScript.VERSION}"
-  process.exit 0

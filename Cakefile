@@ -16,7 +16,7 @@ header = """
    * CoffeeScript Compiler v#{CoffeeScript.VERSION}
    * http://coffeescript.org
    *
-   * Copyright 2010, Jeremy Ashkenas
+   * Copyright 2011, Jeremy Ashkenas
    * Released under the MIT License
    */
 """
@@ -50,10 +50,10 @@ task 'install', 'install CoffeeScript into /usr/local (or --prefix)', (options) 
   exec([
     "mkdir -p #{lib} #{bin}"
     "cp -rf bin lib LICENSE README package.json src #{lib}"
-    "ln -sf #{lib}/bin/coffee #{bin}/coffee"
-    "ln -sf #{lib}/bin/cake #{bin}/cake"
+    "ln -sfn #{lib}/bin/coffee #{bin}/coffee"
+    "ln -sfn #{lib}/bin/cake #{bin}/cake"
     "mkdir -p ~/.node_libraries"
-    "ln -sf #{lib}/lib #{node}"
+    "ln -sfn #{lib}/lib #{node}"
   ].join(' && '), (err, stdout, stderr) ->
     if err then console.log stderr.trim() else log 'done', green
   )
@@ -94,16 +94,18 @@ task 'build:browser', 'rebuild the merged script for inclusion in the browser', 
         #{fs.readFileSync "lib/#{name}.js"}
       };
     """
-  {parser, uglify} = require 'uglify-js'
-  ast = parser.parse """
+  code = """
     this.CoffeeScript = function() {
       function require(path){ return require[path]; }
       #{code}
       return require['./coffee-script']
     }()
   """
-  code = uglify.gen_code uglify.ast_squeeze uglify.ast_mangle ast, extra: yes
+  unless process.env.MINIFY is 'false'
+    {parser, uglify} = require 'uglify-js'
+    code = uglify.gen_code uglify.ast_squeeze uglify.ast_mangle parser.parse code
   fs.writeFileSync 'extras/coffee-script.js', header + '\n' + code
+  console.log "built ... running browser tests:"
   invoke 'test:browser'
 
 
@@ -150,6 +152,9 @@ runTests = (CoffeeScript) ->
   passedTests = 0
   failures    = []
 
+  # make "global" reference available to tests
+  global.global = global
+
   # Mix in the assert module globally, to make it available for tests.
   addGlobal = (name, func) ->
     global[name] = ->
@@ -165,7 +170,8 @@ runTests = (CoffeeScript) ->
   # Our test helper function for delimiting different test cases.
   global.test = (description, fn) ->
     try
-      fn()
+      fn.test = {description, currentFile}
+      fn.call(fn)
     catch e
       e.description = description if description?
       e.source      = fn.toString() if fn.toString?
@@ -198,6 +204,7 @@ runTests = (CoffeeScript) ->
       {error, file}      = fail
       jsFile             = file.replace(/\.coffee$/,'.js')
       match              = error.stack?.match(new RegExp(fail.file+":(\\d+):(\\d+)"))
+      match              = error.stack?.match(/on line (\d+):/) unless match
       [match, line, col] = match if match
       log "\n  #{error.toString()}", red
       log "  #{error.description}", red if error.description
@@ -208,11 +215,11 @@ runTests = (CoffeeScript) ->
   fs.readdir 'test', (err, files) ->
     files.forEach (file) ->
       return unless file.match(/\.coffee$/i)
-      fileName = path.join 'test', file
-      fs.readFile fileName, (err, code) ->
-        currentFile = fileName
+      filename = path.join 'test', file
+      fs.readFile filename, (err, code) ->
+        currentFile = filename
         try
-          CoffeeScript.run code.toString(), {fileName}
+          CoffeeScript.run code.toString(), {filename}
         catch e
           failures.push file: currentFile, error: e
 

@@ -1,6 +1,9 @@
 # Comments
 # --------
 
+# * Single-Line Comments
+# * Block Comments
+
 # Note: awkward spacing seen in some tests is likely intentional.
 
 test "comments in objects", ->
@@ -107,7 +110,7 @@ test "spaced comments with conditional statements", ->
   eq nonce, result
 
 
-#### Block Comments
+# Block Comments
 
 ###
   This is a here-comment.

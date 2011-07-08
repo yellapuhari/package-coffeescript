@@ -35,7 +35,7 @@ o = (patternString, action, options) ->
   return [patternString, '$$ = $1;', options] unless action
   action = if match = unwrap.exec action then match[1] else "(#{action}())"
   action = action.replace /\bnew /g, '$&yy.'
-  action = action.replace /\b(?:Expressions\.wrap|extend)\b/g, 'yy.$&'
+  action = action.replace /\b(?:Block\.wrap|extend)\b/g, 'yy.$&'
   [patternString, "$$ = #{action};", options]
 
 # Grammatical Rules
@@ -56,19 +56,19 @@ grammar =
   # The **Root** is the top-level node in the syntax tree. Since we parse bottom-up,
   # all parsing must end here.
   Root: [
-    o '',                                       -> new Expressions
+    o '',                                       -> new Block
     o 'Body'
     o 'Block TERMINATOR'
   ]
 
   # Any list of statements and expressions, separated by line breaks or semicolons.
   Body: [
-    o 'Line',                                   -> Expressions.wrap [$1]
+    o 'Line',                                   -> Block.wrap [$1]
     o 'Body TERMINATOR Line',                   -> $1.push $3
     o 'Body TERMINATOR'
   ]
 
-  # Expressions and statements, which make up a line in a body.
+  # Block and statements, which make up a line in a body.
   Line: [
     o 'Expression'
     o 'Statement'
@@ -84,7 +84,7 @@ grammar =
 
   # All the different types of expressions in our language. The basic unit of
   # CoffeeScript is the **Expression** -- everything that can be an expression
-  # is one. Expressions serve as the building blocks of many other rules, making
+  # is one. Block serve as the building blocks of many other rules, making
   # them somewhat circular.
   Expression: [
     o 'Value'
@@ -104,7 +104,7 @@ grammar =
   # will convert some postfix forms into blocks for us, by adjusting the
   # token stream.
   Block: [
-    o 'INDENT OUTDENT',                         -> new Expressions
+    o 'INDENT OUTDENT',                         -> new Block
     o 'INDENT Body OUTDENT',                    -> $2
   ]
 
@@ -127,7 +127,9 @@ grammar =
     o 'JS',                                     -> new Literal $1
     o 'REGEX',                                  -> new Literal $1
     o 'BOOL',                                   ->
-      new Literal if $1 is 'undefined' then 'void 0' else $1
+      val = new Literal $1
+      val.isUndefined = yes if $1 is 'undefined'
+      val
   ]
 
   # Assignment of a variable, property, or index to a value.
@@ -164,7 +166,7 @@ grammar =
   ]
 
   # The **Code** node is the function literal. It's defined by an indented block
-  # of **Expressions** preceded by a function arrow, with an optional parameter
+  # of **Block** preceded by a function arrow, with an optional parameter
   # list.
   Code: [
     o 'PARAM_START ParamList PARAM_END FuncGlyph Block', -> new Code $2, $5, $4
@@ -244,14 +246,18 @@ grammar =
     o ':: Identifier',                          -> new Access $2, 'proto'
     o '::',                                     -> new Access new Literal 'prototype'
     o 'Index'
-    o 'Slice',                                  -> new Slice $1
   ]
 
   # Indexing into an object or array using bracket notation.
   Index: [
-    o 'INDEX_START Expression INDEX_END',       -> new Index $2
+    o 'INDEX_START IndexValue INDEX_END',       -> $2
     o 'INDEX_SOAK  Index',                      -> extend $2, soak : yes
     o 'INDEX_PROTO Index',                      -> extend $2, proto: yes
+  ]
+  
+  IndexValue: [
+    o 'Expression',                             -> new Index $1
+    o 'Slice',                                  -> new Slice $1
   ]
 
   # In CoffeeScript, an object literal is simply a list of assignments.
@@ -332,9 +338,9 @@ grammar =
 
   # Array slice literals.
   Slice: [
-    o 'INDEX_START Expression RangeDots Expression INDEX_END', -> new Range $2, $4, $3
-    o 'INDEX_START Expression RangeDots INDEX_END', -> new Range $2, null, $3
-    o 'INDEX_START RangeDots Expression INDEX_END', -> new Range null, $3, $2
+    o 'Expression RangeDots Expression',        -> new Range $1, $3, $2
+    o 'Expression RangeDots',                   -> new Range $1, null, $2
+    o 'RangeDots Expression',                   -> new Range null, $2, $1
   ]
 
   # The **ArgList** is both the list of objects passed into a function call,
@@ -348,7 +354,7 @@ grammar =
     o 'ArgList OptComma INDENT ArgList OptComma OUTDENT', -> $1.concat $4
   ]
 
-  # Valid arguments are Expressions or Splats.
+  # Valid arguments are Block or Splats.
   Arg: [
     o 'Expression'
     o 'Splat'
@@ -401,14 +407,14 @@ grammar =
   # or postfix, with a single expression. There is no do..while.
   While: [
     o 'WhileSource Block',                      -> $1.addBody $2
-    o 'Statement  WhileSource',                 -> $2.addBody Expressions.wrap [$1]
-    o 'Expression WhileSource',                 -> $2.addBody Expressions.wrap [$1]
+    o 'Statement  WhileSource',                 -> $2.addBody Block.wrap [$1]
+    o 'Expression WhileSource',                 -> $2.addBody Block.wrap [$1]
     o 'Loop',                                   -> $1
   ]
 
   Loop: [
     o 'LOOP Block',                             -> new While(new Literal 'true').addBody $2
-    o 'LOOP Expression',                        -> new While(new Literal 'true').addBody Expressions.wrap [$2]
+    o 'LOOP Expression',                        -> new While(new Literal 'true').addBody Block.wrap [$2]
   ]
 
   # Array, object, and range comprehensions, at the most generic level.
@@ -483,15 +489,15 @@ grammar =
   IfBlock: [
     o 'IF Expression Block',                    -> new If $2, $3, type: $1
     o 'IfBlock ELSE IF Expression Block',       -> $1.addElse new If $4, $5, type: $3
-    o 'IfBlock ELSE Block',                     -> $1.addElse $3
   ]
 
   # The full complement of *if* expressions, including postfix one-liner
   # *if* and *unless*.
   If: [
     o 'IfBlock'
-    o 'Statement  POST_IF Expression',          -> new If $3, Expressions.wrap([$1]), type: $2, statement: true
-    o 'Expression POST_IF Expression',          -> new If $3, Expressions.wrap([$1]), type: $2, statement: true
+    o 'IfBlock ELSE Block',                     -> $1.addElse $3
+    o 'Statement  POST_IF Expression',          -> new If $3, Block.wrap([$1]), type: $2, statement: true
+    o 'Expression POST_IF Expression',          -> new If $3, Block.wrap([$1]), type: $2, statement: true
   ]
 
   # Arithmetic and logical operators, working on one or more operands.
