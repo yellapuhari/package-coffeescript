@@ -1,6 +1,13 @@
 # Operators
 # ---------
 
+# * Operators
+# * Existential Operator (Binary)
+# * Existential Operator (Unary)
+# * Aliased Operators
+# * [not] in/of
+# * Chained Comparison
+
 test "binary (2-ary) math operators do not require spaces", ->
   a = 1
   b = -1
@@ -42,84 +49,72 @@ test "`instanceof`", ->
   ok new Number not instanceof String
   ok new Array not instanceof Boolean
 
+test "use `::` operator on keywords `this` and `@`", ->
+  nonce = {}
+  obj =
+    withAt:   -> @::prop
+    withThis: -> this::prop
+  obj.prototype = prop: nonce
+  eq nonce, obj.withAt()
+  eq nonce, obj.withThis()
 
-#### Compound Assignment Operators
 
-test "boolean operators", ->
+# Existential Operator (Binary)
+
+test "binary existential operator", ->
   nonce = {}
 
-  a  = 0
-  a or= nonce
-  eq nonce, a
+  b = a ? nonce
+  eq nonce, b
 
-  b  = 1
-  b or= nonce
-  eq 1, b
+  a = null
+  b = undefined
+  b = a ? nonce
+  eq nonce, b
 
-  c = 0
-  c and= nonce
-  eq 0, c
+  a = false
+  b = a ? nonce
+  eq false, b
 
-  d = 1
-  d and= nonce
-  eq nonce, d
+  a = 0
+  b = a ? nonce
+  eq 0, b
 
-  # ensure that RHS is treated as a group
-  e = f = false
-  e and= f or true
-  eq false, e
+test "binary existential operator conditionally evaluates second operand", ->
+  i = 1
+  func = -> i -= 1
+  result = func() ? func()
+  eq result, 0
 
-test "compound assignment as a sub expression", ->
-  [a, b, c] = [1, 2, 3]
-  eq 6, (a + b += c)
-  eq 1, a
-  eq 5, b
-  eq 3, c
-
-# *note: this test could still use refactoring*
-test "compound assignment should be careful about caching variables", ->
-  count = 0
-  list = []
-
-  list[++count] or= 1
-  eq 1, list[1]
-  eq 1, count
-
-  list[++count] ?= 2
-  eq 2, list[2]
-  eq 2, count
-
-  list[count++] and= 6
-  eq 6, list[2]
-  eq 3, count
-
-  base = ->
-    ++count
-    base
-
-  base().four or= 4
-  eq 4, base.four
-  eq 4, count
-
-  base().five ?= 5
-  eq 5, base.five
-  eq 5, count
-
-test "compound assignment with implicit objects", ->
-  obj = undefined
-  obj ?=
-    one: 1
-
-  eq 1, obj.one
-
-  obj and=
-    two: 2
-
-  eq undefined, obj.one
-  eq         2, obj.two
+test "binary existential operator with negative number", ->
+  a = null ? - 1
+  eq -1, a
 
 
-#### `is`,`isnt`,`==`,`!=`
+# Existential Operator (Unary)
+
+test "postfix existential operator", ->
+  ok (if nonexistent? then false else true)
+  defined = true
+  ok defined?
+  defined = false
+  ok defined?
+
+test "postfix existential operator only evaluates its operand once", ->
+  semaphore = 0
+  fn = ->
+    ok false if semaphore
+    ++semaphore
+  ok(if fn()? then true else false)
+
+test "negated postfix existential operator", ->
+  ok !nothing?.value
+
+test "postfix existential operator on expressions", ->
+  eq true, (1 or 0)?, true
+
+
+# `is`,`isnt`,`==`,`!=`
 
 test "`==` and `is` should be interchangeable", ->
   a = b = 1
@@ -135,7 +130,7 @@ test "`!=` and `isnt` should be interchangeable", ->
   ok a isnt b
 
 
-#### `in`, `of`
+# [not] in/of
 
 # - `in` should check if an array contains a value using `indexOf`
 # - `of` should check if a property is defined on an object using `in`
@@ -189,8 +184,12 @@ test "#768: `in` should preserve evaluation order", ->
   ok a() not in [b(),c()]
   eq 3, share
 
+test "#1099: empty array after `in` should compile to `false`", ->
+  eq 1, [5 in []].length
+  eq false, do -> return 0 in []
 
-#### Chainable Operators
+
+# Chained Comparison
 
 test "chainable operators", ->
   ok 100 > 10 > 1 > 0 > -1

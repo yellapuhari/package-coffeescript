@@ -1,3 +1,8 @@
+# Option Parser
+# -------------
+
+# TODO: refactor option parser tests
+
 # Ensure that the OptionParser handles arguments correctly.
 return unless require?
 {OptionParser} = require './../lib/optparse'

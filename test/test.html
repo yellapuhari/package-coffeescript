@@ -27,10 +27,9 @@
   start   = new Date
   success = total = done = failed = 0
 
-  say = (msg, yay) ->
+  say = (msg) ->
     div = document.createElement 'div'
     div.appendChild document.createTextNode msg
-    div.style.color = if yay then 'green' else 'red'
     stdout.appendChild div
     msg
 
@@ -72,16 +71,9 @@
       return
     ok no
 
-
-  CoffeeScript.run = (code, cb) ->
-    try Function(CoffeeScript.compile code, wrap: no)()
-    catch e then cb(); throw e
-    cb yes
-
   run = (name) ->
-    CoffeeScript.load "#{name}.coffee", (yay) ->
-      say "#{ if yay then '\u2714' else '\u3000' } #{name}", yay
-      ++failed unless yay
+    CoffeeScript.load "#{name}.coffee", ->
+      say '\u2714 ' + name
       fin() if ++done is names.length
 
   fin = ->
@@ -92,30 +84,33 @@
     say msg, yay
 
   run name for name in names = [
-    'arguments'
+    'arrays'
     'assignment'
-    'break'
+    'booleans'
+    'classes'
     'comments'
+    'compilation'
+    'comprehensions'
+    'control_flow'
     'exception_handling'
+    'formatting'
+    'function_invocation'
+    'functions'
     'helpers'
+    'importing'
+    'interpolation'
+    'javascript_literals'
+    'numbers'
+    'objects'
     'operators'
-    'regular_expressions'
-    'test_chaining'
-    'test_classes'
-    'test_compilation'
-    'test_comprehensions'
-    'test_existence'
-    'test_functions'
-    'test_heredocs'
-    'conditionals'
-    'test_literals'
-    'test_pattern_matching'
-    'ranges_slices_and_splices'
-    'test_returns'
-    'test_splats'
-    'test_strings'
-    'test_switch'
-    'test_while'
+    'option_parser'
+    'ranges'
+    'regexps'
+    'repl'
+    'scope'
+    'slicing_and_splicing'
+    'soaks'
+    'strings'
   ]
   </script>
 

@@ -32,6 +32,7 @@ exports.Lexer = class Lexer
   # Before returning the token stream, run it through the [Rewriter](rewriter.html)
   # unless explicitly asked not to.
   tokenize: (code, opts = {}) ->
+    code     = "\n#{code}" if WHITESPACE.test code
     code     = code.replace(/\r/g, '').replace TRAILING_SPACES, ''
 
     @code    = code           # The remainder of the source code.
@@ -79,7 +80,8 @@ exports.Lexer = class Lexer
       @token 'OWN', id
       return id.length
     forcedIdentifier = colon or
-      (prev = last @tokens) and not prev.spaced and prev[0] in ['.', '?.', '@', '::']
+      (prev = last @tokens) and (prev[0] in ['.', '?.', '::'] or
+      not prev.spaced and prev[0] is '@')
     tag = 'IDENTIFIER'
 
     if id in JS_KEYWORDS or
@@ -112,7 +114,7 @@ exports.Lexer = class Lexer
         @identifierError id
 
     unless forcedIdentifier
-      id  = COFFEE_ALIASES[id] if COFFEE_ALIASES.hasOwnProperty id
+      id  = COFFEE_ALIAS_MAP[id] if id in COFFEE_ALIASES
       tag = switch id
         when '!'                                  then 'UNARY'
         when '==', '!='                           then 'COMPARE'
@@ -169,11 +171,11 @@ exports.Lexer = class Lexer
   commentToken: ->
     return 0 unless match = @chunk.match COMMENT
     [comment, here] = match
-    @line += count comment, '\n'
     if here
       @token 'HERECOMMENT', @sanitizeHeredoc here,
         herecomment: true, indent: Array(@indent + 1).join(' ')
       @token 'TERMINATOR', '\n'
+    @line += count comment, '\n'
     comment.length
 
   # Matches JavaScript interpolated directly into the source via backticks.
@@ -342,8 +344,11 @@ exports.Lexer = class Lexer
   # erasing all external indentation on the left-hand side.
   sanitizeHeredoc: (doc, options) ->
     {indent, herecomment} = options
-    return doc if herecomment and 0 > doc.indexOf '\n'
-    unless herecomment
+    if herecomment
+      if HEREDOC_ILLEGAL.test doc
+        throw new Error "block comment cannot contain \"*/\", starting on line #{@line + 1}"
+      return doc if doc.indexOf('\n') <= 0
+    else
       while match = HEREDOC_INDENT.exec doc
         attempt = match[1]
         indent = attempt if indent is null or 0 < attempt.length < indent.length
@@ -366,7 +371,7 @@ exports.Lexer = class Lexer
           stack.push tok
         when '(', 'CALL_START'
           if stack.length then stack.pop()
-          else
+          else if tok[0] is '('
             tok[0] = 'PARAM_START'
             return this
     this
@@ -438,10 +443,11 @@ exports.Lexer = class Lexer
         nested = new Lexer().tokenize inner, line: @line, rewrite: off
         nested.pop()
         nested.shift() if nested[0]?[0] is 'TERMINATOR'
-        if nested.length > 1
-          nested.unshift ['(', '(']
-          nested.push    [')', ')']
-        tokens.push ['TOKENS', nested]
+        if len = nested.length
+          if len > 1
+            nested.unshift ['(', '(']
+            nested.push    [')', ')']
+          tokens.push ['TOKENS', nested]
       i += expr.length
       pi = i + 1
     tokens.push ['NEOSTRING', str.slice pi] if i > pi < str.length
@@ -506,7 +512,8 @@ JS_KEYWORDS = [
 
 # CoffeeScript-only keywords.
 COFFEE_KEYWORDS = ['undefined', 'then', 'unless', 'until', 'loop', 'of', 'by', 'when']
-COFFEE_KEYWORDS.push op for op of COFFEE_ALIASES =
+
+COFFEE_ALIAS_MAP =
   and  : '&&'
   or   : '||'
   is   : '=='
@@ -516,6 +523,9 @@ COFFEE_KEYWORDS.push op for op of COFFEE_ALIASES =
   no   : 'false'
   on   : 'true'
   off  : 'false'
+  
+COFFEE_ALIASES  = (key for key of COFFEE_ALIAS_MAP)
+COFFEE_KEYWORDS = COFFEE_KEYWORDS.concat COFFEE_ALIASES
 
 # The list of keywords that are reserved by JavaScript, but not used, or are
 # used by CoffeeScript internally. We throw an error when these are encountered,
@@ -534,7 +544,7 @@ exports.RESERVED = RESERVED.concat(JS_KEYWORDS).concat(COFFEE_KEYWORDS)
 
 # Token matching regexes.
 IDENTIFIER = /// ^
-  ( [$A-Za-z_][$\w]* )
+  ( [$A-Za-z_\x7f-\uffff][$\w\x7f-\uffff]* )
   ( [^\n\S]* : (?!:) )?  # Is this a property name?
 ///
 
@@ -569,7 +579,7 @@ JSTOKEN    = /^`[^\\`]*(?:\\.[^\\`]*)*`/
 
 # Regex-matching-regexes.
 REGEX = /// ^
-  / (?! \s )       # disallow leading whitespace
+  / (?! [\s=] )       # disallow leading whitespace or equals signs
   [^ [ / \n \\ ]*  # every other thing
   (?:
     (?: \\[\s\S]   # anything escaped
@@ -591,9 +601,11 @@ MULTILINER      = /\n/g
 
 HEREDOC_INDENT  = /\n+([^\n\S]*)/g
 
-ASSIGNED        = /^\s*@?([$A-Za-z_][$\w]*|['"].*['"])[^\n\S]*?[:=][^:=>]/
+HEREDOC_ILLEGAL = /\*\//
 
-LINE_CONTINUER  = /// ^ \s* (?: , | \??\.(?!\.) | :: ) ///
+ASSIGNED        = /^\s*@?([$A-Za-z_][$\w\x7f-\uffff]*|['"].*['"])[^\n\S]*?[:=][^:=>]/
+
+LINE_CONTINUER  = /// ^ \s* (?: , | \??\.(?![.\d]) | :: ) ///
 
 TRAILING_SPACES = /\s+$/
 

@@ -1,48 +1,78 @@
-# Arguments
-# ---------
+# Function Literals
+# -----------------
 
-# shared identity function
-id = (_) -> if arguments.length is 1 then _ else Array::slice.call(arguments)
+# TODO: add indexing and method invocation tests: (->)[0], (->).call()
 
-test "basic argument passing tests", ->
-  a = {}
-  b = {}
-  c = {}
-  eq 1, (id 1)
-  eq 2, (id 1, 2)[1]
-  eq a, (id a)
-  eq c, (id a, b, c)[2]
+# * Function Definition
+# * Bound Function Definition
+# * Parameter List Features
+#   * Splat Parameters
+#   * Context (@) Parameters
+#   * Parameter Destructuring
+#   * Default Parameters
 
-test "passing arguments on separate lines", ->
-  a = {}
-  b = {}
-  c = {}
-  ok(id(
-    a
-    b
-    c
-  )[1] is b)
-  eq(0, id(
-    0
-    10
-  )[0])
-  eq(a,id(
-    a
-  ))
-  eq b,
-  (id b)
+# Function Definition
 
-test "reference `arguments` inside of functions", ->
-  sumOfArgs = ->
-    sum = (a,b) -> a + b
-    sum = 0
-    sum += num for num in arguments
-    sum
+x = 1
+y = {}
+y.x = -> 3
+ok x is 1
+ok typeof(y.x) is 'function'
+ok y.x instanceof Function
+ok y.x() is 3
 
-  eq 10, sumOfArgs(0, 1, 2, 3, 4)
+# The empty function should not cause a syntax error.
+->
+() ->
+
+# Multiple nested function declarations mixed with implicit calls should not
+# cause a syntax error.
+(one) -> (two) -> three four, (five) -> six seven, eight, (nine) ->
+
+# with multiple single-line functions on the same line.
+func = (x) -> (x) -> (x) -> x
+ok func(1)(2)(3) is 3
+
+# Make incorrect indentation safe.
+func = ->
+  obj = {
+          key: 10
+        }
+  obj.key - 5
+eq func(), 5
+
+# Ensure that functions with the same name don't clash with helper functions.
+del = -> 5
+ok del() is 5
 
 
-#### Parameter List Features
+# Bound Function Definition
+
+obj =
+  bound: ->
+    (=> this)()
+  unbound: ->
+    (-> this)()
+  nested: ->
+    (=>
+      (=>
+        (=> this)()
+      )()
+    )()
+eq obj, obj.bound()
+ok obj isnt obj.unbound()
+eq obj, obj.nested()
+
+
+test "self-referencing functions", ->
+  changeMe = ->
+    changeMe = 2
+
+  changeMe()
+  eq changeMe, 2
+
+
+# Parameter List Features
 
 test "splats", ->
   arrayEq [0, 1, 2], (((splat...) -> splat) 0, 1, 2)
@@ -125,3 +155,11 @@ test "default values with splatted arguments", ->
   eq  5, withSplats(1,1)
   eq  1, withSplats(1,1,1)
   eq  2, withSplats(1,1,1,1)
+
+test "default values with function calls", ->
+  doesNotThrow -> CoffeeScript.compile "(x = f()) ->"
+
+test "arguments vs parameters", ->
+  doesNotThrow -> CoffeeScript.compile "f(x) ->"
+  f = (g) -> g()
+  eq 5, f (x) -> 5
