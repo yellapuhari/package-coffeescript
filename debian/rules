@@ -29,5 +29,7 @@ DEB_UPSTREAM_TARBALL_MD5 = 9218a47356c0da6713a05162a2e10295
 # suppress checking binary file, to not upset dpkg-source
 DEB_COPYRIGHT_CHECK_IGNORE_REGEX = ^documentation/images/logo\.png|debian/(changelog|copyright(|_hints|_newhints))$
 
+CDBS_DEPENDS_coffeescript = nodejs (>= 0.2.6)
+
 binary-fixup/coffeescript::
 	chmod -R a-x,a+X $(cdbs_curdestdir)/usr/lib/coffeescript/
