@@ -1,7 +1,9 @@
 Source: coffeescript
 Section: devel
 Priority: extra
-Maintainer: Geza Kovacs <gkovacs@mit.edu>
+Maintainer: Debian Javascript Maintainers <pkg-javascript-devel@lists.alioth.debian.org>
+Uploaders: Jonas Smedegaard <dr@jones.dk>,
+ Geza Kovacs <gkovacs@mit.edu>
 Build-Depends: debhelper (>= 7.0.50~)
 Standards-Version: 3.9.1
 Vcs-Git: git://git.debian.org/git/collab-maint/coffeescript.git
