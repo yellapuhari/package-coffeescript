@@ -5,14 +5,14 @@ Source: http://coffeescript.org/
 
 Files: *
 Copyright: 2010, Jeremy Ashkenas
-License: MIT
+License: Expat
 
 Files: debian/*
 Copyright: 2010, Geza Kovacs <gkovacs@mit.edu>
  2011, Jonas Smedegaard <dr@jones.dk>
 License: GPL-2+
 
-License: MIT
+License: Expat
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to
     deal in the Software without restriction, including without limitation the
