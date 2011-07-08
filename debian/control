@@ -4,7 +4,7 @@ Priority: extra
 Maintainer: Debian Javascript Maintainers <pkg-javascript-devel@lists.alioth.debian.org>
 Uploaders: Jonas Smedegaard <dr@jones.dk>,
  Geza Kovacs <gkovacs@mit.edu>
-Build-Depends: debhelper (>= 7.0.50~)
+Build-Depends: cdbs, debhelper (>= 7)
 Standards-Version: 3.9.1
 Vcs-Git: git://git.debian.org/git/collab-maint/coffeescript.git
 Vcs-Browser: http://git.debian.org/?p=collab-maint/coffeescript.git;a=summary
