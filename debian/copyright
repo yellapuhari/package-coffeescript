@@ -6,6 +6,18 @@ Source: https://github.com/jashkenas/coffee-script/downloads
 Files: *
 Copyright: 2010, Jeremy Ashkenas
 License: Expat
+ Released under the MIT License
+Comment:
+ Included file LICENSE indicates that it is the Expat variant of MIT.
+
+Files: documentation/vendor/jquery-1.4.2.js
+Copyright: 2009-2010, The Dojo Foundation
+ 2010, John Resig
+License: Expat or GPL-2
+ Dual licensed under the MIT and GPL licenses.
+Comment:
+ Upstream VCS indicates that it is the Expat variant of MIT and GPL
+ version 2.
 
 Files: debian/*
 Copyright: 2010, Geza Kovacs <gkovacs@mit.edu>
@@ -48,3 +60,8 @@ Comment:
  .
  You should have received a copy of the 'GNU General Public License'
  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+License: GPL-2
+Comment:
+ On Debian systems the 'GNU General Public License' version 2 is located
+ in '/usr/share/common-licenses/GPL'.
