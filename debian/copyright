@@ -12,14 +12,6 @@ Copyright: 2010, Geza Kovacs <gkovacs@mit.edu>
  2011, Jonas Smedegaard <dr@jones.dk>
 License: GPL-2+
 
-Files: vendor/jison/*
-Copyright: 2009, Zachary Carter
-License: MIT
-
-Files: extras/coffee.vim
-Copyright: 2006, Jeff Olson
-License: MIT
-
 License: MIT
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to
