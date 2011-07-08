@@ -14,16 +14,35 @@ Package: coffeescript
 Architecture: all
 Depends: ${shlibs:Depends}, ${misc:Depends}, nodejs (>= 0.2.6)
 Description: interpreter and compiler for the CoffeeScript language
- CoffeeScript is a language which compiles to JavaScript
+ CoffeeScript is a little language that compiles into JavaScript.
+ Underneath all of those embarrassing braces and semicolons, JavaScript
+ has always had a gorgeous object model at its heart. CoffeeScript is an
+ attempt to expose the good parts of JavaScript in a simple way.
  .
- The compiler and interpreter rely on NodeJS;
- however the produced JavaScript code is portable across web browsers.
+ The golden rule of CoffeeScript is: "It's just JavaScript". The code
+ compiles one-to-one into the equivalent JS, and there is no
+ interpretation at runtime. You can use any existing JavaScript library
+ seamlessly (and vice-versa). The compiled output is readable and
+ pretty-printed, passes through JavaScript Lint without warnings, will
+ work in every JavaScript implementation, and tends to run as fast or
+ faster than the equivalent handwritten JavaScript.
 
 Package: coffeescript-doc
 Section: doc
 Architecture: all
 Depends: ${misc:Depends}
-Description: documentation for coffeescript
- CoffeeScript is a language which compiles to JavaScript
+Description: documentation for the CoffeeScript language
+ CoffeeScript is a little language that compiles into JavaScript.
+ Underneath all of those embarrassing braces and semicolons, JavaScript
+ has always had a gorgeous object model at its heart. CoffeeScript is an
+ attempt to expose the good parts of JavaScript in a simple way.
  .
- Contains the language reference for CoffeeScript in HTML format.
+ The golden rule of CoffeeScript is: "It's just JavaScript". The code
+ compiles one-to-one into the equivalent JS, and there is no
+ interpretation at runtime. You can use any existing JavaScript library
+ seamlessly (and vice-versa). The compiled output is readable and
+ pretty-printed, passes through JavaScript Lint without warnings, will
+ work in every JavaScript implementation, and tends to run as fast or
+ faster than the equivalent handwritten JavaScript.
+ .
+ This package contains documentation.
