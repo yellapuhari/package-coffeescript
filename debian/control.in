@@ -1,0 +1,29 @@
+Source: coffeescript
+Section: devel
+Priority: extra
+Maintainer: Debian Javascript Maintainers <pkg-javascript-devel@lists.alioth.debian.org>
+Uploaders: Jonas Smedegaard <dr@jones.dk>,
+ Geza Kovacs <gkovacs@mit.edu>
+Build-Depends: @cdbs@
+Standards-Version: 3.9.1
+Vcs-Git: git://git.debian.org/git/collab-maint/coffeescript.git
+Vcs-Browser: http://git.debian.org/?p=collab-maint/coffeescript.git;a=summary
+Homepage: http://coffeescript.org
+
+Package: coffeescript
+Architecture: all
+Depends: ${shlibs:Depends}, ${misc:Depends}, nodejs (>= 0.2.6)
+Description: interpreter and compiler for the CoffeeScript language
+ CoffeeScript is a language which compiles to JavaScript
+ .
+ The compiler and interpreter rely on NodeJS;
+ however the produced JavaScript code is portable across web browsers.
+
+Package: coffeescript-doc
+Section: doc
+Architecture: all
+Depends: ${misc:Depends}
+Description: documentation for coffeescript
+ CoffeeScript is a language which compiles to JavaScript
+ .
+ Contains the language reference for CoffeeScript in HTML format.
