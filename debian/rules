@@ -33,6 +33,11 @@ CDBS_BUILD_DEPENDS += , libnode-uglify (>= 1.0.4)
 DEB_COPYRIGHT_CHECK_IGNORE_REGEX = ^documentation/images/logo\.png|debian/(changelog|copyright(|_hints|_newhints))$
 
 CDBS_DEPENDS_coffeescript = nodejs (>= 0.2.6)
+CDBS_RECOMMENDS_libjs-coffeescript = javascript-common
+CDBS_SUGGESTS_coffeescript = libjs-coffeescript
+CDBS_SUGGESTS_libjs-coffeescript = coffeescript
+
+DEB_INSTALL_DOCS_libjs-coffeescript += extras/EXTRAS
 
 # put aside upstream-shipped temp files during build but after copyright-check
 upstreamtmpdirs = lib extras
