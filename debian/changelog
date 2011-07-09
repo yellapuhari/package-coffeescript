@@ -1,4 +1,4 @@
-coffeescript (1.1.1-2) unstable; urgency=low
+coffeescript (1.1.1-1) unstable; urgency=low
 
   * New upstream release.
 
@@ -38,9 +38,15 @@ coffeescript (1.1.1-2) unstable; urgency=low
   * Fix revert (accidental?) patch to upstream files.
   * Compile code from itself using upstream build routines (not just
     redistribute upstream prebuild code).
+    + As a bonus, fix include /usr/bin/cake in coffeescript package.
   * Generate coffee.1 manpage at package build time.
+  * Add binary package libjs-coffeescript.
+    Closes: bug#611703.
+  * Have coffeescript provide libnode-coffeescript.
+  * Bump policy compliance to standards-version 3.9.2.
+  * Install examples.
 
- -- Jonas Smedegaard <dr@jones.dk>  Sat, 09 Jul 2011 02:33:32 +0200
+ -- Jonas Smedegaard <dr@jones.dk>  Sat, 09 Jul 2011 05:39:03 +0200
 
 coffeescript (1.0.0-1) unstable; urgency=low
 
