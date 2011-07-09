@@ -16,6 +16,7 @@ Depends: ${shlibs:Depends},
  ${misc:Depends},
  ${cdbs:Depends}
 Suggests: ${cdbs:Suggests}
+Provides: ${cdbs:Provides}
 Description: interpreter and compiler for the CoffeeScript language
  CoffeeScript is a little language that compiles into JavaScript.
  Underneath all of those embarrassing braces and semicolons, JavaScript

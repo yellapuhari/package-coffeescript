@@ -33,6 +33,7 @@ CDBS_DEPENDS_coffeescript = nodejs (>= 0.2.6)
 CDBS_RECOMMENDS_libjs-coffeescript = javascript-common
 CDBS_SUGGESTS_coffeescript = libjs-coffeescript
 CDBS_SUGGESTS_libjs-coffeescript = coffeescript
+CDBS_PROVIDES_coffeescript = libnode-coffeescript
 
 DEB_INSTALL_DOCS_libjs-coffeescript += extras/EXTRAS
 
