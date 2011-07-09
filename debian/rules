@@ -62,5 +62,21 @@ clean::
 install/coffeescript::
 	bin/cake --destdir debian/tmp --prefix /usr --nodedir /usr/lib/nodejs install
 
+# generate manpage based on --help option of script itself
+CDBS_BUILD_DEPENDS += , help2man
+manpages = debian/coffee.1
+DEB_INSTALL_MANPAGES_coffeescript = $(manpages)
+common-binary-indep:: $(manpages)
+$(manpages): install/coffeescript
+$(manpages): debian/%.1 : %
+	help2man \
+		--name="interpreter and compiler for the CoffeeScript language" \
+		--version-string="$(DEB_NOEPOCH_VERSION)" \
+		--no-info \
+		--output=$@ \
+		bin/$<
+clean::
+	rm -f $(manpages)
+
 binary-fixup/coffeescript::
 	chmod -R a-x,a+X debian/coffeescript/usr/lib/coffee-script/lib/ debian/coffeescript/usr/lib/coffee-script/src/
