@@ -73,13 +73,13 @@ manpages = debian/coffee.1
 DEB_INSTALL_MANPAGES_coffeescript = $(manpages)
 common-binary-indep:: $(manpages)
 $(manpages): install/coffeescript
-$(manpages): debian/%.1 : %
+$(manpages): debian/%.1 : bin/%
 	help2man \
 		--name="interpreter and compiler for the CoffeeScript language" \
 		--version-string="$(DEB_NOEPOCH_VERSION)" \
 		--no-info \
 		--output=$@ \
-		bin/$<
+		$<
 clean::
 	rm -f $(manpages)
 
