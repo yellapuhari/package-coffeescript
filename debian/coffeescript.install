@@ -1,5 +1,4 @@
-bin/
-usr/lib/coffee-script/bin/
+usr/bin/
 usr/lib/coffee-script/lib/
 usr/lib/coffee-script/src/
 usr/lib/nodejs/
