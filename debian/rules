@@ -26,9 +26,6 @@ DEB_UPSTREAM_TARBALL_BASENAME = $(DEB_UPSTREAM_TARBALL_VERSION)
 DEB_UPSTREAM_WGET_OPTS += --no-check-certificate
 DEB_UPSTREAM_TARBALL_MD5 = 9218a47356c0da6713a05162a2e10295
 
-# libnode-uglify versioning: library calls broken in earlier packaging
-CDBS_BUILD_DEPENDS += , libnode-uglify (>= 1.0.4)
-
 # suppress checking binary file, to not upset dpkg-source
 DEB_COPYRIGHT_CHECK_IGNORE_REGEX = ^documentation/images/logo\.png|debian/(changelog|copyright(|_hints|_newhints))$
 
@@ -40,7 +37,6 @@ CDBS_SUGGESTS_libjs-coffeescript = coffeescript
 DEB_INSTALL_DOCS_libjs-coffeescript += extras/EXTRAS
 
 # put aside upstream-shipped temp files during build but after copyright-check
-upstreamtmpdirs = lib extras
 pre-build:: debian/stamp-upstreamtmpstuff
 debian/stamp-upstreamtmpstuff: debian/stamp-copyright-check
 	for dir in $(upstreamtmpdirs); do \
@@ -56,7 +52,13 @@ clean::
 	done
 	rm -f debian/stamp-upstreamtmpstuff
 
+# Compile from itself
 # TODO: add build:parser when jison is available in Debian
+# TODO: add build:ultraviolet when ruby-uv is in Debian
+# TODO: compile docs when docco is in Debian
+# libnode-uglify versioning: library calls broken in earlier packaging
+CDBS_BUILD_DEPENDS += , libnode-uglify (>= 1.0.4)
+upstreamtmpdirs += lib extras
 build/coffeescript:: debian/stamp-build
 debian/stamp-build:
 	chmod +x bin/cake
