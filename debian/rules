@@ -56,10 +56,11 @@ clean::
 	done
 	rm -f debian/stamp-upstreamtmpstuff
 
+# TODO: add build:parser when jison is available in Debian
 build/coffeescript:: debian/stamp-build
 debian/stamp-build:
 	chmod +x bin/cake
-	bin/cake build:full build:parser build:browser
+	bin/cake build:full build:browser
 	touch $@
 clean::
 	rm -f debian/stamp-build
