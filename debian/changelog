@@ -1,9 +1,46 @@
-coffeescript (1.0.0-2) unstable; urgency=low
+coffeescript (1.1.1-2) unstable; urgency=low
 
-  * Remove patch because nodejs now uses upstream names (Closes: #611701)
+  * New upstream release.
+
+  [ Geza Kovacs ]
+  * Remove patch because nodejs now uses upstream names.
+    Closes: bug#611701, #623704. Thanks to Lionel Landwerlin.
   * Minimum nodejs dependency version bumped to 0.2.6
 
- -- Geza Kovacs <gkovacs@mit.edu>  Mon, 31 Jan 2011 22:14:15 -0500
+  [ Jonas Smedegaard ]
+  * Packaging moved to Debian Javascript Maintainers, with myself and
+    Geza as uploaders.
+  * Switch packaging to CDBS (from short-form dh).
+    + Track build-dependencies.
+    + implement get-orig-source target.
+    + track copyright/licensing changes.
+    + Declare package relations in rules file.
+    + Drop install hints now superfluous (detected automagically).
+  * Ease building with git-buildpackage:
+    + Git-ignore quilt .pc dir.
+    + Add dpkg-source local-options.
+  * Add git-buildpackage config, enabling pristine-tar and signed tags.
+  * Tighten access rights fixup.
+  * Add copyright and licensing header for debian subdir to rules file.
+  * Add Last-Update hint to patch DEP3 header.
+  * Update copyright file:
+    + Change licensing of debian subdir to GPL-2+ (from MIT).
+    + Reformat to draft 174 of DEP-5.
+    + Drop obsolete Files sections.
+    + Rename main License section to Expat (from ambigous MIT).
+    + Consistently wrap multiline sections at 72 chars.
+    + Use download list page (not homepage) as Source URL.
+    + Add Files section for convenience copy of jquery (no new license).
+    + Bump (yes, not extend) main copyright timeframe.
+  * Update control file. Add copyright hints.
+  * Fix add path segment to Homepage URL.
+  * Rewrite long descriptions based on upstream intro.
+  * Fix revert (accidental?) patch to upstream files.
+  * Compile code from itself using upstream build routines (not just
+    redistribute upstream prebuild code).
+  * Generate coffee.1 manpage at package build time.
+
+ -- Jonas Smedegaard <dr@jones.dk>  Sat, 09 Jul 2011 02:33:32 +0200
 
 coffeescript (1.0.0-1) unstable; urgency=low
 
