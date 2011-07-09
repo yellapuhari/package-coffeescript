@@ -1,2 +1,2 @@
-bin/coffee usr/bin
-lib/* usr/lib/coffeescript
+bin/
+usr/lib/
