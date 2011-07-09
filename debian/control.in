@@ -5,7 +5,7 @@ Maintainer: Debian Javascript Maintainers <pkg-javascript-devel@lists.alioth.deb
 Uploaders: Jonas Smedegaard <dr@jones.dk>,
  Geza Kovacs <gkovacs@mit.edu>
 Build-Depends: @cdbs@
-Standards-Version: 3.9.1
+Standards-Version: 3.9.2
 Vcs-Git: git://git.debian.org/git/collab-maint/coffeescript.git
 Vcs-Browser: http://git.debian.org/?p=collab-maint/coffeescript.git;a=summary
 Homepage: http://coffeescript.org/
