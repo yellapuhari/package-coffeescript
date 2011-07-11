@@ -30,6 +30,9 @@ Description: interpreter and compiler for the CoffeeScript language
  pretty-printed, passes through JavaScript Lint without warnings, will
  work in every JavaScript implementation, and tends to run as fast or
  faster than the equivalent handwritten JavaScript.
+ .
+ The "cake" executable is provided as "cake.coffeescript" to peacefully
+ coexist with cakephp.
 
 Package: libjs-coffeescript
 Architecture: all

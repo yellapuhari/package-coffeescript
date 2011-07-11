@@ -61,14 +61,16 @@ clean::
 # libnode-uglify versioning: library calls broken in earlier packaging
 CDBS_BUILD_DEPENDS += , libnode-uglify (>= 1.0.4)
 upstreamtmpdirs += lib extras
+# Provide "cake" as "cake.coffeescript" to peacefully coexist with cakephp
+cake = cake.coffeescript
 build/coffeescript:: debian/stamp-build
 debian/stamp-build:
 	chmod +x bin/cake
 	bin/cake build:full build:browser
 
-	echo '#!/usr/bin/env node' > debian/cake
-	echo >> debian/cake
-	echo "require('../lib/coffee-script/lib/cake').run();" >> debian/cake
+	echo '#!/usr/bin/env node' > debian/$(cake)
+	echo >> debian/$(cake)
+	echo "require('../lib/coffee-script/lib/cake').run();" >> debian/$(cake)
 
 	echo '#!/usr/bin/env node' > debian/coffee
 	echo >> debian/coffee
@@ -76,12 +78,13 @@ debian/stamp-build:
 
 	touch $@
 clean::
-	rm -f debian/cake debian/coffee
+	rm -f debian/$(cake) debian/coffee
 	rm -f debian/stamp-build
 
 install/coffeescript::
 	bin/cake --destdir debian/tmp --prefix /usr --nodedir /usr/lib/nodejs install
-	install -t debian/tmp/usr/bin/ debian/cake debian/coffee
+	rm -f debian/tmp/usr/bin/cake
+	install -t debian/tmp/usr/bin/ debian/$(cake) debian/coffee
 
 # generate manpage based on --help option of script itself
 CDBS_BUILD_DEPENDS += , help2man
