@@ -8,7 +8,7 @@ Files: README
  Rakefile
  bin/cake
  bin/coffee
- debian/coffeescript-dev.install
+ debian/README.Debian
  debian/coffeescript-doc.doc-base
  debian/coffeescript-doc.install
  debian/coffeescript.install

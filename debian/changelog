@@ -1,11 +1,10 @@
 coffeescript (1.1.1-2) unstable; urgency=low
 
-  * Provide command-line utility cake in separate binary package
-    coffeescript-dev: Typically unneeded at runtime, and conflicts with
-    cakephp-scripts.
+  * Provide command-line utility "cake" as "cake.coffeescript" to
+    peacefully coexist with cakephp.
     Closes: bug#633429. Thanks to Ralf Treinen.
 
- -- Jonas Smedegaard <dr@jones.dk>  Sun, 10 Jul 2011 12:12:25 +0200
+ -- Jonas Smedegaard <dr@jones.dk>  Mon, 11 Jul 2011 11:47:21 +0200
 
 coffeescript (1.1.1-1) unstable; urgency=low
 
