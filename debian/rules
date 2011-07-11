@@ -30,12 +30,10 @@ DEB_UPSTREAM_TARBALL_MD5 = 9218a47356c0da6713a05162a2e10295
 DEB_COPYRIGHT_CHECK_IGNORE_REGEX = ^documentation/images/logo\.png|debian/(changelog|copyright(|_hints|_newhints))$
 
 CDBS_DEPENDS_coffeescript = nodejs (>= 0.2.6)
-CDBS_DEPENDS_coffeescript-dev = coffeescript
 CDBS_RECOMMENDS_libjs-coffeescript = javascript-common
-CDBS_SUGGESTS_coffeescript = libjs-coffeescript, coffeescript-dev
+CDBS_SUGGESTS_coffeescript = libjs-coffeescript
 CDBS_SUGGESTS_libjs-coffeescript = coffeescript
 CDBS_PROVIDES_coffeescript = libnode-coffeescript
-CDBS_CONFLICTS_coffeescript-dev = cakephp-scripts
 
 DEB_INSTALL_DOCS_libjs-coffeescript += extras/EXTRAS
 DEB_INSTALL_EXAMPLES_coffeescript += examples/*
@@ -68,26 +66,22 @@ debian/stamp-build:
 	chmod +x bin/cake
 	bin/cake build:full build:browser
 
+	echo '#!/usr/bin/env node' > debian/cake
+	echo >> debian/cake
+	echo "require('../lib/coffee-script/lib/cake').run();" >> debian/cake
+
 	echo '#!/usr/bin/env node' > debian/coffee
 	echo >> debian/coffee
 	echo "require('../lib/coffee-script/lib/command').run();" >> debian/coffee
 
 	touch $@
-build/coffeescript-dev:: debian/stamp-build-dev
-debian/stamp-build-dev:
-	echo '#!/usr/bin/env node' > debian/cake
-	echo >> debian/cake
-	echo "require('../lib/coffee-script/lib/cake').run();" >> debian/cake
-
-	touch $@
 clean::
 	rm -f debian/cake debian/coffee
 	rm -f debian/stamp-build
+
 install/coffeescript::
 	bin/cake --destdir debian/tmp --prefix /usr --nodedir /usr/lib/nodejs install
-	install -t debian/tmp/usr/bin/ debian/coffee
-install/coffeescript-dev::
-	install -t debian/tmp/usr/bin/ debian/cake
+	install -t debian/tmp/usr/bin/ debian/cake debian/coffee
 
 # generate manpage based on --help option of script itself
 CDBS_BUILD_DEPENDS += , help2man
