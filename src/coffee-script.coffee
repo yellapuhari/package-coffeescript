@@ -8,7 +8,6 @@
 
 fs               = require 'fs'
 path             = require 'path'
-vm               = require 'vm'
 {Lexer,RESERVED} = require './lexer'
 {parser}         = require './parser'
 
@@ -21,7 +20,7 @@ else if require.registerExtension
   require.registerExtension '.coffee', (content) -> compile content
 
 # The current CoffeeScript version number.
-exports.VERSION = '1.1.1'
+exports.VERSION = '1.1.2'
 
 # Words that cannot be used as identifiers in CoffeeScript code
 exports.RESERVED = RESERVED
@@ -54,44 +53,58 @@ exports.nodes = (source, options) ->
 # Compile and execute a string of CoffeeScript (on the server), correctly
 # setting `__filename`, `__dirname`, and relative `require()`.
 exports.run = (code, options) ->
-  # We want the root module.
-  root = module
-  while root.parent
-    root = root.parent
+  mainModule = require.main
 
   # Set the filename.
-  root.filename = process.argv[1] =
+  mainModule.filename = process.argv[1] =
       if options.filename then fs.realpathSync(options.filename) else '.'
 
   # Clear the module cache.
-  root.moduleCache = {} if root.moduleCache
+  mainModule.moduleCache and= {}
 
   # Assign paths for node_modules loading
   if process.binding('natives').module
     {Module} = require 'module'
-    root.paths = Module._nodeModulePaths path.dirname options.filename
+    mainModule.paths = Module._nodeModulePaths path.dirname options.filename
 
   # Compile.
-  if path.extname(root.filename) isnt '.coffee' or require.extensions
-    root._compile compile(code, options), root.filename
+  if path.extname(mainModule.filename) isnt '.coffee' or require.extensions
+    mainModule._compile compile(code, options), mainModule.filename
   else
-    root._compile code, root.filename
+    mainModule._compile code, mainModule.filename
 
 # Compile and evaluate a string of CoffeeScript (in a Node.js-like environment).
 # The CoffeeScript REPL uses this to run the input.
 exports.eval = (code, options = {}) ->
-  sandbox = options.sandbox
-  unless sandbox
-    sandbox =
-      require: require
-      module : { exports: {} }
-    sandbox[g] = global[g] for g of global
-    sandbox.global = sandbox
-    sandbox.global.global = sandbox.global.root = sandbox.global.GLOBAL = sandbox
-  sandbox.__filename = options.filename || 'eval'
-  sandbox.__dirname  = path.dirname sandbox.__filename
-  js = compile "_=(#{code.trim()})", options
-  vm.runInNewContext js, sandbox, sandbox.__filename
+  return unless code = code.trim()
+  if {Script} = require 'vm'
+    sandbox = Script.createContext()
+    sandbox.global = sandbox.root = sandbox.GLOBAL = sandbox
+    if options.sandbox?
+      if options.sandbox instanceof sandbox.constructor
+        sandbox = options.sandbox
+      else
+        sandbox[k] = v for own k, v of options.sandbox
+    sandbox.__filename = options.filename || 'eval'
+    sandbox.__dirname  = path.dirname sandbox.__filename
+    # define module/require only if they chose not to specify their own
+    unless sandbox.module or sandbox.require
+      Module = require 'module'
+      sandbox.module  = _module  = new Module(options.modulename || 'eval')
+      sandbox.require = _require = (path) -> Module._load path, _module
+      _module.filename = sandbox.__filename
+      _require[r] = require[r] for r in Object.getOwnPropertyNames require
+      # use the same hack node currently uses for their own REPL
+      _require.paths = _module.paths = Module._nodeModulePaths process.cwd()
+      _require.resolve = (request) -> Module._resolveFilename request, _module
+  o = {}
+  o[k] = v for own k, v of options
+  o.bare = on # ensure return value
+  js = compile code, o
+  if Script
+    Script.runInContext js, sandbox
+  else
+    eval js
 
 # Instantiate a Lexer for our use here.
 lexer = new Lexer

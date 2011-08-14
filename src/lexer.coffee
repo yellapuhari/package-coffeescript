@@ -84,8 +84,7 @@ exports.Lexer = class Lexer
       not prev.spaced and prev[0] is '@')
     tag = 'IDENTIFIER'
 
-    if id in JS_KEYWORDS or
-       not forcedIdentifier and id in COFFEE_KEYWORDS
+    if not forcedIdentifier and (id in JS_KEYWORDS or id in COFFEE_KEYWORDS)
       tag = id.toUpperCase()
       if tag is 'WHEN' and @tag() in LINE_BREAK
         tag = 'LEADING_WHEN'
@@ -189,7 +188,11 @@ exports.Lexer = class Lexer
   # JavaScript and Ruby.
   regexToken: ->
     return 0 if @chunk.charAt(0) isnt '/'
-    return @heregexToken match if match = HEREGEX.exec @chunk
+    if match = HEREGEX.exec @chunk
+      length = @heregexToken match
+      @line += count match[0], '\n'
+      return length
+
     prev = last @tokens
     return 0 if prev and (prev[0] in (if prev.spaced then NOT_REGEX else NOT_SPACED_REGEX))
     return 0 unless match = REGEX.exec @chunk
@@ -374,6 +377,7 @@ exports.Lexer = class Lexer
           else if tok[0] is '('
             tok[0] = 'PARAM_START'
             return this
+          else return this
     this
 
   # Close up all remaining open blocks at the end of the file.
@@ -409,6 +413,8 @@ exports.Lexer = class Lexer
           continue
       if end is '}' and letter in ['"', "'"]
         stack.push end = letter
+      else if end is '}' and letter is '/' and match = (HEREGEX.exec(str.slice i) or REGEX.exec(str.slice i))
+        i += match[0].length - 1
       else if end is '}' and letter is '{'
         stack.push end = '}'
       else if end is '"' and prev is '#' and letter is '{'
@@ -523,7 +529,7 @@ COFFEE_ALIAS_MAP =
   no   : 'false'
   on   : 'true'
   off  : 'false'
-  
+
 COFFEE_ALIASES  = (key for key of COFFEE_ALIAS_MAP)
 COFFEE_KEYWORDS = COFFEE_KEYWORDS.concat COFFEE_ALIASES
 
@@ -550,7 +556,7 @@ IDENTIFIER = /// ^
 
 NUMBER     = ///
   ^ 0x[\da-f]+ |                              # hex
-  ^ (?: \d+(\.\d+)? | \.\d+ ) (?:e[+-]?\d+)?  # decimal
+  ^ \d*\.?\d+ (?:e[+-]?\d+)?  # decimal
 ///i
 
 HEREDOC    = /// ^ ("""|''') ([\s\S]*?) (?:\n[^\n\S]*)? \1 ///
@@ -653,7 +659,7 @@ NOT_REGEX = ['NUMBER', 'REGEX', 'BOOL', '++', '--', ']']
 # force a division parse:
 NOT_SPACED_REGEX = NOT_REGEX.concat ')', '}', 'THIS', 'IDENTIFIER', 'STRING'
 
-# Tokens which could legitimately be invoked or indexed. A opening
+# Tokens which could legitimately be invoked or indexed. An opening
 # parentheses or bracket following these tokens will be recorded as the start
 # of a function invocation or indexing operation.
 CALLABLE  = ['IDENTIFIER', 'STRING', 'REGEX', ')', ']', '}', '?', '::', '@', 'THIS', 'SUPER']
