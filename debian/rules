@@ -24,7 +24,7 @@ include /usr/share/cdbs/1/rules/debhelper.mk
 DEB_UPSTREAM_URL = http://githubredir.debian.net/github/jashkenas/coffee-script
 DEB_UPSTREAM_TARBALL_BASENAME = $(DEB_UPSTREAM_TARBALL_VERSION)
 DEB_UPSTREAM_WGET_OPTS += --no-check-certificate
-DEB_UPSTREAM_TARBALL_MD5 = 9218a47356c0da6713a05162a2e10295
+DEB_UPSTREAM_TARBALL_MD5 = 9331fad15cc7fc9f5f258bbb81cd135a
 
 # suppress checking binary file, to not upset dpkg-source
 DEB_COPYRIGHT_CHECK_IGNORE_REGEX = ^documentation/images/logo\.png|debian/(changelog|copyright(|_hints|_newhints))$
