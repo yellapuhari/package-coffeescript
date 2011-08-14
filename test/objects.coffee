@@ -215,3 +215,21 @@ test "#1274: `{} = a()` compiles to `false` instead of `a()`", ->
   fn = -> a = true
   {} = fn()
   ok a
+
+test "#1436: `for` etc. work as normal property names", ->
+  obj = {}
+  eq no, obj.hasOwnProperty 'for'
+  obj.for = 'foo' of obj
+  eq yes, obj.hasOwnProperty 'for'
+
+test "#1322: implicit call against implicit object with block comments", ->
+  ((obj, arg) ->
+    eq obj.x * obj.y, 6
+    ok not arg
+  )
+    ###
+    x
+    ###
+    x: 2
+    ### y ###
+    y: 3

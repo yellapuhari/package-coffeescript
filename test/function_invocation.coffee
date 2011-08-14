@@ -320,6 +320,11 @@ test "#904: Destructuring function arguments with same-named variables in scope"
   eq nonce, a
   eq nonce, b
 
+test "Simple Destructuring function arguments with same-named variables in scope", ->
+  x = 1
+  f = ([x]) -> x
+  eq f([2]), 2
+  eq x, 1
 
 test "caching base value", ->
 
@@ -438,8 +443,66 @@ test "don't wrap 'pure' statements in a closure", ->
       return item if item is nonce
   eq nonce, fn items
 
-#### Unusual `new` Usage
 
 test "usage of `new` is careful about where the invocation parens end up", ->
   eq 'object', typeof new try Array
   eq 'object', typeof new do -> ->
+
+
+test "implicit call against control structures", ->
+  result = null
+  save   = (obj) -> result = obj
+
+  save switch id false
+    when true
+      'true'
+    when false
+      'false'
+
+  eq result, 'false'
+
+  save if id false
+    'false'
+  else
+    'true'
+
+  eq result, 'true'
+
+  save unless id false
+    'true'
+  else
+    'false'
+
+  eq result, 'true'
+
+  save try
+    doesnt exist
+  catch error
+    'caught'
+
+  eq result, 'caught'
+
+  save try doesnt(exist) catch error then 'caught2'
+
+  eq result, 'caught2'
+
+
+test "#1420: things like `(fn() ->)`; there are no words for this one", ->
+  fn = -> (f) -> f()
+  nonce = {}
+  eq nonce, (fn() -> nonce)
+
+test "#1416: don't omit one 'new' when compiling 'new new'", ->
+  nonce = {}
+  obj = new new -> -> {prop: nonce}
+  eq obj.prop, nonce
+
+test "#1416: don't omit one 'new' when compiling 'new new fn()()'", ->
+  nonce = {}
+  argNonceA = {}
+  argNonceB = {}
+  fn = (a) -> (b) -> {a, b, prop: nonce}
+  obj = new new fn(argNonceA)(argNonceB)
+  eq obj.prop, nonce
+  eq obj.a, argNonceA
+  eq obj.b, argNonceB
