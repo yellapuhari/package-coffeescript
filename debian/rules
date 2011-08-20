@@ -35,7 +35,6 @@ CDBS_SUGGESTS_coffeescript = libjs-coffeescript
 CDBS_SUGGESTS_libjs-coffeescript = coffeescript
 CDBS_PROVIDES_coffeescript = libnode-coffeescript
 
-DEB_INSTALL_DOCS_libjs-coffeescript += extras/EXTRAS
 DEB_INSTALL_EXAMPLES_coffeescript += examples/*
 
 # put aside upstream-shipped temp files during build but after copyright-check
