@@ -1,3 +1,14 @@
+coffeescript (1.1.2-1) unstable; urgency=low
+
+  * New upstream release.
+  * Add patch to avoid regression tests as part of normal build.
+  * Unfuzz patches.
+  * Do regression tests for both main and browser code, and respect
+    DEB_BUILD_OPTIONS nocheck keyword.
+  * Drop installing extras/EXTRAS: no longer shipped upstream.
+
+ -- Jonas Smedegaard <dr@jones.dk>  Sat, 20 Aug 2011 17:38:06 +0200
+
 coffeescript (1.1.1-3) unstable; urgency=low
 
   * Rebuild to let ftpmasters know that this is not same code as was

@@ -19,6 +19,7 @@ Files: README
  debian/libjs-coffeescript.install
  debian/libjs-coffeescript.links
  debian/manpages
+ debian/patches/avoid-tests-during-build.patch
  debian/patches/series
  debian/patches/support-system-wide-install.patch
  debian/source/format
@@ -140,7 +141,6 @@ Files: README
  examples/poignant.coffee
  examples/potion.coffee
  examples/web_server.coffee
- extras/EXTRAS
  extras/jsl.conf
  lib/browser.js
  lib/cake.js
