@@ -66,7 +66,8 @@ cake = cake.coffeescript
 build/coffeescript:: debian/stamp-build
 debian/stamp-build:
 	chmod +x bin/cake
-	bin/cake build:full build:browser
+	bin/cake build:full
+	bin/cake build:browser
 
 	echo '#!/usr/bin/env node' > debian/$(cake)
 	echo >> debian/$(cake)
