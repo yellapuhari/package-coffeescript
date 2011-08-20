@@ -53,7 +53,7 @@ clean::
 	done
 	rm -f debian/stamp-upstreamtmpstuff
 
-# Compile from itself
+# Compile from itself (build twice to mimic build:full without testing)
 # TODO: add build:parser when jison is available in Debian
 # TODO: add build:ultraviolet when ruby-uv is in Debian
 # TODO: compile docs when docco is in Debian
@@ -65,7 +65,8 @@ cake = cake.coffeescript
 build/coffeescript:: debian/stamp-build
 debian/stamp-build:
 	chmod +x bin/cake
-	bin/cake build:full
+	bin/cake build
+	bin/cake build
 	bin/cake build:browser
 	$(if $(filter nocheck,$(DEB_BUILD_OPTIONS)),,bin/cake test)
 	$(if $(filter nocheck,$(DEB_BUILD_OPTIONS)),,bin/cake test:browser)
