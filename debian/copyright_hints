@@ -17,7 +17,6 @@ Files: README
  debian/control.in
  debian/gbp.conf
  debian/libjs-coffeescript.install
- debian/libjs-coffeescript.links
  debian/manpages
  debian/patches/avoid-tests-during-build.patch
  debian/patches/series
