@@ -68,6 +68,8 @@ debian/stamp-build:
 	chmod +x bin/cake
 	bin/cake build:full
 	bin/cake build:browser
+	$(if $(filter nocheck,$(DEB_BUILD_OPTIONS)),,bin/cake test)
+	$(if $(filter nocheck,$(DEB_BUILD_OPTIONS)),,bin/cake test:browser)
 
 	echo '#!/usr/bin/env node' > debian/$(cake)
 	echo >> debian/$(cake)
