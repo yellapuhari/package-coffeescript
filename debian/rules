@@ -57,8 +57,7 @@ clean::
 # TODO: add build:parser when jison is available in Debian
 # TODO: add build:ultraviolet when ruby-uv is in Debian
 # TODO: compile docs when docco is in Debian
-# libnode-uglify versioning: library calls broken in earlier packaging
-CDBS_BUILD_DEPENDS += , libnode-uglify (>= 1.0.4)
+CDBS_BUILD_DEPENDS += , node-uglify
 upstreamtmpdirs += lib extras
 # Provide "cake" as "cake.coffeescript" to peacefully coexist with cakephp
 cake = cake.coffeescript
