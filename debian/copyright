@@ -10,9 +10,9 @@ License: Expat
 Comment:
  Included file LICENSE indicates that it is the Expat variant of MIT.
 
-Files: documentation/vendor/jquery-1.4.2.js
-Copyright: 2009-2010, The Dojo Foundation
- 2010, John Resig
+Files: documentation/vendor/jquery-1.6.4.js
+Copyright: 2011, John Resig
+ 2011, The Dojo Foundation
 License: Expat or GPL-2
  Dual licensed under the MIT and GPL licenses.
 Comment:
