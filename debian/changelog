@@ -1,3 +1,20 @@
+coffeescript (1.1.3-1) UNRELEASED; urgency=low
+
+  * New upstream release.
+  * Fix add trailing newline to watch file.
+  * Drop dpkg local-options hints from packaging source: now defaults.
+  * Update package relations:
+    + Provide node-coffeescript (not libnode-coffeescript).
+    + Build-depend on node-uglify (not versioned on libnode-uglify).
+    + Relax to build-depend unversioned on devscripts and debhelper:
+      Needed versions are available even in unstable.
+    + Relax slightly versioning of build-dependency on cdbs.
+  * Unfuzz patches.
+  * Update copyright file:
+    + Update Files section for (unused!) convenience copy of jquery).
+
+ -- Jonas Smedegaard <dr@jones.dk>  Thu, 22 Dec 2011 22:16:04 +0700
+
 coffeescript (1.1.2-2) unstable; urgency=low
 
   * Install jsl.conf as example file (not below /etc).

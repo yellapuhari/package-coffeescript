@@ -22,7 +22,6 @@ Files: README
  debian/patches/series
  debian/patches/support-system-wide-install.patch
  debian/source/format
- debian/source/local-options
  debian/watch
  documentation/coffee/aliases.coffee
  documentation/coffee/array_comprehensions.coffee
@@ -141,20 +140,20 @@ Files: README
  examples/potion.coffee
  examples/web_server.coffee
  extras/jsl.conf
- lib/browser.js
- lib/cake.js
- lib/coffee-script.js
- lib/command.js
- lib/grammar.js
- lib/helpers.js
- lib/index.js
- lib/lexer.js
- lib/nodes.js
- lib/optparse.js
- lib/parser.js
- lib/repl.js
- lib/rewriter.js
- lib/scope.js
+ lib/coffee-script/browser.js
+ lib/coffee-script/cake.js
+ lib/coffee-script/coffee-script.js
+ lib/coffee-script/command.js
+ lib/coffee-script/grammar.js
+ lib/coffee-script/helpers.js
+ lib/coffee-script/index.js
+ lib/coffee-script/lexer.js
+ lib/coffee-script/nodes.js
+ lib/coffee-script/optparse.js
+ lib/coffee-script/parser.js
+ lib/coffee-script/repl.js
+ lib/coffee-script/rewriter.js
+ lib/coffee-script/scope.js
  package.json
  src/browser.coffee
  src/cake.coffee
@@ -177,6 +176,7 @@ Files: README
  test/compilation.coffee
  test/comprehensions.coffee
  test/control_flow.coffee
+ test/eval.coffee
  test/exception_handling.coffee
  test/formatting.coffee
  test/function_invocation.coffee
@@ -234,10 +234,9 @@ Copyright: 2011, Jeremy Ashkenas, DocumentCloud Inc.</strong>
 License: UNKNOWN
  FIXME
 
-Files: documentation/vendor/jquery-1.4.2.js
-Copyright: 2009, The Dojo Foundation
- 2010, John Resig
- 2010, The Dojo Foundation
+Files: documentation/vendor/jquery-1.6.4.js
+Copyright: 2011, John Resig
+ 2011, The Dojo Foundation
 License: UNKNOWN
  FIXME
 
