@@ -72,11 +72,11 @@ debian/stamp-build:
 
 	echo '#!/usr/bin/env node' > debian/$(cake)
 	echo >> debian/$(cake)
-	echo "require('../lib/coffee-script/lib/cake').run();" >> debian/$(cake)
+	echo "require('../lib/coffee-script/lib/coffee-script/cake').run();" >> debian/$(cake)
 
 	echo '#!/usr/bin/env node' > debian/coffee
 	echo >> debian/coffee
-	echo "require('../lib/coffee-script/lib/command').run();" >> debian/coffee
+	echo "require('../lib/coffee-script/lib/coffee-script/command').run();" >> debian/coffee
 
 	touch $@
 clean::
