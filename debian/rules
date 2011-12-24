@@ -38,6 +38,7 @@ CDBS_PROVIDES_coffeescript = node-coffeescript
 DEB_INSTALL_EXAMPLES_coffeescript += examples/* extras/jsl.conf
 
 # put aside upstream-shipped temp files during build but after copyright-check
+upstreamtmpdirs += lib extras
 pre-build:: debian/stamp-upstreamtmpstuff
 debian/stamp-upstreamtmpstuff: debian/stamp-copyright-check
 	for dir in $(upstreamtmpdirs); do \
@@ -58,7 +59,6 @@ clean::
 # TODO: add build:ultraviolet when ruby-uv is in Debian
 # TODO: compile docs when docco is in Debian
 CDBS_BUILD_DEPENDS += , node-uglify
-upstreamtmpdirs += lib extras
 # Provide "cake" as "cake.coffeescript" to peacefully coexist with cakephp
 cake = cake.coffeescript
 build/coffeescript:: debian/stamp-build
