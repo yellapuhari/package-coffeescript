@@ -1,3 +1,11 @@
+coffeescript (1.2.0-2) unstable; urgency=low
+
+  * Fix paths when invoking from command-line.
+  * Fix install code for browsers below /usr/share (not /usr/lib).
+  * Provide uncompressed (not only compressed) code for browsers.
+
+ -- Jonas Smedegaard <dr@jones.dk>  Sat, 24 Dec 2011 15:25:09 +0700
+
 coffeescript (1.2.0-1) unstable; urgency=low
 
   * New upstream release.
