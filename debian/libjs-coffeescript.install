@@ -1,1 +1,1 @@
-extras/coffee-script.js usr/share/javascript/coffeescript/
+extras/coffee-script.js debian/coffee-script.min.js usr/share/javascript/coffeescript/

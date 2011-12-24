@@ -69,6 +69,9 @@ debian/stamp-build:
 	bin/cake build:browser
 	$(if $(filter nocheck,$(DEB_BUILD_OPTIONS)),,bin/cake test)
 	$(if $(filter nocheck,$(DEB_BUILD_OPTIONS)),,bin/cake test:browser)
+	mv extras/coffee-script.js debian/coffee-script.min.js
+	MINIFY=false bin/cake build:browser
+	$(if $(filter nocheck,$(DEB_BUILD_OPTIONS)),,bin/cake test:browser)
 
 	echo '#!/usr/bin/env node' > debian/$(cake)
 	echo >> debian/$(cake)
@@ -80,7 +83,7 @@ debian/stamp-build:
 
 	touch $@
 clean::
-	rm -f debian/$(cake) debian/coffee
+	rm -f debian/$(cake) debian/coffee debian/coffee-script.min.js
 	rm -f debian/stamp-build
 
 install/coffeescript::
