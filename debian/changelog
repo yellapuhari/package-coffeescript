@@ -1,3 +1,9 @@
+coffeescript (1.2.0-afiniate1) oneiric; urgency=low
+
+  * Simple repackaging for afiniate. All credit goes to Jonas Smedegaard
+
+ -- Eric B Merritt <eric@afiniate.com>  Mon, 28 Feb 2012 21:12:00 +0000
+
 coffeescript (1.2.0-2) unstable; urgency=low
 
   * Fix paths when invoking from command-line.
